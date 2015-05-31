@@ -1,4 +1,6 @@
 type t
+val none : t
+
 val extract : (_ -> _) -> t
 val lookup : t -> (string * int * int) option
 

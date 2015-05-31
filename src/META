@@ -1,0 +1,6 @@
+name="owee"
+version="0.01"
+description="OCaml library to work with DWARF format"
+archive(byte)="owee.cma"
+archive(native)="owee.cmxa"
+requires="unix bigarray"

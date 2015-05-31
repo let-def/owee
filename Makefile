@@ -1,18 +1,46 @@
-ifdef WITH_BIN_ANNOT
-	OCAMLFLAGS += -bin-annot
-endif
+all: owee
 
-ifdef WITH_DEBUG
-	OCAMLFLAGS += -g
-	OCAMLLDFLAGS += -g
-endif
+owee:
+	$(MAKE) -C src
+	
+clean:
+	$(MAKE) -C src $@
 
-RESULT = owee
+.PHONY: all owee clean install uninstall reinstall
 
-SOURCES = owee_buf.mli owee_buf.ml owee_elf.mli owee_elf.ml owee_debug_line.ml owee_debug_line.mli owee_location.mli owee_location.ml 
+DIST_FILES=               \
+	src/owee_buf.mli        \
+	src/owee_buf.ml         \
+	src/owee_buf.cmi        \
+	src/owee_buf.cmo        \
+	src/owee_buf.cmx        \
+	src/owee_elf.mli        \
+	src/owee_elf.ml         \
+	src/owee_elf.cmi        \
+	src/owee_elf.cmo        \
+	src/owee_elf.cmx        \
+	src/owee_debug_line.ml  \
+	src/owee_debug_line.mli \
+	src/owee_debug_line.cmi \
+	src/owee_debug_line.cmo \
+	src/owee_debug_line.cmx \
+	src/owee_location.mli   \
+	src/owee_location.ml    \
+	src/owee_location.cmi   \
+	src/owee_location.cmo   \
+	src/owee_location.cmx   \
+	src/owee.cma            \
+	src/owee.a							\
+	src/owee.cmxa
 
-PACKS = unix bigarray
+$(DIST_FILES): owee
 
-all: byte-code-library native-code-library
+install: $(DIST_FILES) src/META
+	ocamlfind install owee $^
 
--include OCamlMakefile
+uninstall:
+	ocamlfind remove owee
+
+reinstall:
+	-$(MAKE) uninstall
+	$(MAKE) install

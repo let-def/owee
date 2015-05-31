@@ -1,0 +1,12 @@
+Owee is an experimental library to work with DWARF format.
+
+OCaml users might find the `Owee_location` module interesting.
+
+Provided you:
+- use Linux
+- on 64-bit x86 architecture,
+- generated debugging symbols,
+- compiled in native code
+
+Then it gives you the location of the definition of an arbitrary functional
+value.

@@ -10,4 +10,6 @@ Provided you:
 - no relocation happened and you're not using `Dynlink`
 
 Then it gives you the location of the definition of an arbitrary functional
-value.
+value. Linking the library is enough, no change to the toolchain is required.
+
+These restrictions can be relaxed, open issues for platform you'd find interesting to support & on which you can test the library.

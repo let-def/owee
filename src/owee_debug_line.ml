@@ -26,8 +26,8 @@ let read_filename t =
 let rec skip_directories t =
   match Read.zero_string "Unterminated directory list" t () with
   | "" -> ()
-  | dir ->
-    (*print_endline dir;*)
+  | _dir ->
+    (*print_endline _dir;*)
     skip_directories t
 
 let rec read_filenames acc t = match read_filename t with
@@ -105,7 +105,7 @@ let initial_state header = {
   discriminator  = 0;
 }
 
-let reset_state state header =
+(*let reset_state state header =
   state.address        <- 0;
   state.filename       <- "";
   state.file           <- 1;
@@ -117,9 +117,9 @@ let reset_state state header =
   state.prologue_end   <- false;
   state.epilogue_begin <- false;
   state.isa            <- 0;
-  state.discriminator  <- 0
+  state.discriminator  <- 0*)
 
-let get_filename header {file; filename} =
+let get_filename header {file; filename; _} =
   if file <= 0 then
     None
   else if file <= Array.length header.filenames then
@@ -223,7 +223,7 @@ let step header section state f acc =
 
   | opcode -> (* Unrecognised opcode *)
     let count = Char.code header.standard_opcode_lengths.[opcode - 1] in
-    for i = 0 to count - 1 do
+    for _i = 0 to count - 1 do
       ignore (Read.uleb128 section : u128)
     done;
     acc

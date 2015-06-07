@@ -14,12 +14,13 @@ val assert_format : bool -> string -> unit
 type s8   = int
 type u8   = int
 type u16  = int
+type s32  = int
 type u32  = int
 type u64  = int
 type s128 = int
 type u128 = int
 
-val cursor  : t -> cursor
+val cursor  : ?at:int -> t -> cursor
 val seek    : cursor -> int -> unit
 val ensure  : cursor -> int -> string -> unit
 val advance : cursor -> int -> unit

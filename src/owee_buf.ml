@@ -15,8 +15,8 @@ let assert_format b msg =
   if not b then
     invalid_format msg
 
-let cursor buffer =
-  { buffer; position = 0 }
+let cursor ?(at=0) buffer =
+  { buffer; position = at }
 
 let seek t position =
   t.position <- position
@@ -37,9 +37,9 @@ let at_end t = dim t.buffer = t.position
 type s8  = int
 type u8  = int
 type u16 = int
+type s32 = int
 type u32 = int
 type u64 = int
-
 type s128 = int
 type u128 = int
 

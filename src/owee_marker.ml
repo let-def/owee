@@ -4,15 +4,16 @@ type _ service +=
    | Name : string service
    | Traverse : ((Obj.t -> 'acc -> 'acc) -> 'acc -> 'acc) service
 
-exception Unmanaged_object
-exception Unsupported_service
+type 'a service_result =
+  | Success of 'a
+  | Unsupported_service
+  | Unmanaged_object
 
-type magic_potion
 let magic_potion = Obj.repr (ref ())
 
 type 'a marker = {
   magic_potion: Obj.t;
-  service: 'result. 'a -> 'result service -> 'result;
+  service: 'result. 'a -> 'result service -> 'result service_result;
 }
 
 let is_marker obj =
@@ -29,13 +30,13 @@ let query_service t service =
         if is_marker obj' then
           raise (Found (Obj.obj obj'))
       done;
-    raise Unmanaged_object
+    Unmanaged_object
   with Found marker ->
     marker.service obj service
 
 module type T0 = sig
   type t
-  val service : t -> 'result service -> 'result
+  val service : t -> 'result service -> 'result service_result
 end
 
 module Unsafe0 (M : T0) : sig
@@ -64,33 +65,11 @@ end
 
 module type T1 = sig
   type 'x t
-  val service : 'x t -> 'result service -> 'a
-end
-
-module type T2 = sig
-  type ('x, 'y) t
-  val service : ('x, 'y) t -> 'result service -> 'a
-end
-
-module type T3 = sig
-  type ('x, 'y, 'z) t
-  val service : ('x, 'y, 'z) t -> 'result service -> 'a
+  val service : 'x t -> 'result service -> 'result service_result
 end
 
 module Unsafe1 (M : T1) : sig
   val marker : 'x M.t marker
-end = struct
-  let marker = M.({ magic_potion; service })
-end
-
-module Unsafe2 (M : T2) : sig
-  val marker : ('x, 'y) M.t marker
-end = struct
-  let marker = M.({ magic_potion; service })
-end
-
-module Unsafe3 (M : T3) : sig
-  val marker : ('x, 'y, 'z) M.t marker
 end = struct
   let marker = M.({ magic_potion; service })
 end
@@ -105,6 +84,17 @@ end = struct
   let mark cell = {cell; marker}
 end
 
+module type T2 = sig
+  type ('x, 'y) t
+  val service : ('x, 'y) t -> 'result service -> 'result service_result
+end
+
+module Unsafe2 (M : T2) : sig
+  val marker : ('x, 'y) M.t marker
+end = struct
+  let marker = M.({ magic_potion; service })
+end
+
 module Safe2 (M : T2) : sig
   val mark : ('a, 'b) M.t -> ('a, 'b) M.t marked
 end = struct
@@ -113,6 +103,17 @@ end = struct
       let service obj request = M.service obj.cell request
     end)
   let mark cell = {cell; marker}
+end
+
+module type T3 = sig
+  type ('x, 'y, 'z) t
+  val service : ('x, 'y, 'z) t -> 'result service -> 'result service_result
+end
+
+module Unsafe3 (M : T3) : sig
+  val marker : ('x, 'y, 'z) M.t marker
+end = struct
+  let marker = M.({ magic_potion; service })
 end
 
 module Safe3 (M : T3) : sig

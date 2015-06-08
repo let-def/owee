@@ -4,13 +4,16 @@ type _ service +=
    | Name : string service
    | Traverse : ((Obj.t -> 'acc -> 'acc) -> 'acc -> 'acc) service
 
+type 'a service_result =
+  | Success of 'a
+  | Unsupported_service
+  | Unmanaged_object
+
 module type T0 = sig
   type t
-  val service : t -> 'result service -> 'result
+  val service : t -> 'result service -> 'result service_result
 end
-val query_service : 'a -> 'result service -> 'result
-exception Unmanaged_object
-exception Unsupported_service
+val query_service : 'a -> 'result service -> 'result service_result
 
 type 'a marked
 val get : 'a marked -> 'a
@@ -27,15 +30,15 @@ end
 
 module type T1 = sig
   type 'x t
-  val service : 'x t -> 'result service -> 'a
+  val service : 'x t -> 'result service -> 'result service_result
 end
 module type T2 = sig
   type ('x, 'y) t
-  val service : ('x, 'y) t -> 'result service -> 'a
+  val service : ('x, 'y) t -> 'result service -> 'result service_result
 end
 module type T3 = sig
   type ('x, 'y, 'z) t
-  val service : ('x, 'y, 'z) t -> 'result service -> 'a
+  val service : ('x, 'y, 'z) t -> 'result service -> 'result service_result
 end
 
 module Safe1 (M : T1) : sig

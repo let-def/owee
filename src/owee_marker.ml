@@ -14,10 +14,11 @@ type 'a marker = {
   magic_potion: Obj.t;
   service: 'result. 'a -> 'result service -> 'result;
 }
-exception Found of Obj.t marker
 
 let is_marker obj =
   Obj.tag obj = 0 && Obj.size obj = 2 && Obj.field obj 0 == magic_potion
+
+exception Found of Obj.t marker
 
 let query_service t service =
   let obj = Obj.repr t in
@@ -43,24 +44,20 @@ end = struct
   let marker = M.({ magic_potion; service })
 end
 
-module Safe0 (M : T0) : sig
-  type t
-  val inj : M.t -> t
-  val prj : t -> M.t
-end = struct
-  type wrapper = {
-    cell: M.t;
-    marker: wrapper marker;
-  }
-  type t = wrapper
+type 'a marked = {
+  cell: 'a;
+  marker: 'a marked marker;
+}
+let get t = t.cell
 
+module Safe0 (M : T0) : sig
+  val mark : M.t -> M.t marked
+end = struct
   include Unsafe0(struct
-      type t = wrapper
+      type t = M.t marked
       let service obj request = M.service obj.cell request
     end)
-
-  let inj cell = {cell; marker}
-  let prj t = t.cell
+  let mark cell = {cell; marker}
 end
 
 (******)
@@ -99,61 +96,31 @@ end = struct
 end
 
 module Safe1 (M : T1) : sig
-  type 'a t
-  val inj : 'a M.t -> 'a t
-  val prj : 'a t -> 'a M.t
+  val mark : 'a M.t -> 'a M.t marked
 end = struct
-  type 'a wrapper = {
-    cell: 'a M.t;
-    marker: 'a wrapper marker;
-  }
-  type 'a t = 'a wrapper
-
   include Unsafe1(struct
-      type 'a t = 'a wrapper
+      type 'a t = 'a M.t marked
       let service obj request = M.service obj.cell request
     end)
-
-  let inj cell = {cell; marker}
-  let prj t = t.cell
+  let mark cell = {cell; marker}
 end
 
 module Safe2 (M : T2) : sig
-  type ('a, 'b) t
-  val inj : ('a, 'b) M.t -> ('a, 'b) t
-  val prj : ('a, 'b) t -> ('a, 'b) M.t
+  val mark : ('a, 'b) M.t -> ('a, 'b) M.t marked
 end = struct
-  type ('a, 'b) wrapper = {
-    cell: ('a, 'b) M.t;
-    marker: ('a, 'b) wrapper marker;
-  }
-  type ('a, 'b) t = ('a, 'b) wrapper
-
   include Unsafe2(struct
-      type ('a, 'b) t = ('a, 'b) wrapper
+      type ('a, 'b) t = ('a, 'b) M.t marked
       let service obj request = M.service obj.cell request
     end)
-
-  let inj cell = {cell; marker}
-  let prj t = t.cell
+  let mark cell = {cell; marker}
 end
 
 module Safe3 (M : T3) : sig
-  type ('a, 'b, 'c) t
-  val inj : ('a, 'b, 'c) M.t -> ('a, 'b, 'c) t
-  val prj : ('a, 'b, 'c) t -> ('a, 'b, 'c) M.t
+  val mark : ('a, 'b, 'c) M.t -> ('a, 'b, 'c) M.t marked
 end = struct
-  type ('a, 'b, 'c) wrapper = {
-    cell: ('a, 'b, 'c) M.t;
-    marker: ('a, 'b, 'c) wrapper marker;
-  }
-  type ('a, 'b, 'c) t = ('a, 'b, 'c) wrapper
-
   include Unsafe3(struct
-      type ('a, 'b, 'c) t = ('a, 'b, 'c) wrapper
+      type ('a, 'b, 'c) t = ('a, 'b, 'c) M.t marked
       let service obj request = M.service obj.cell request
     end)
-
-  let inj cell = {cell; marker}
-  let prj t = t.cell
+  let mark cell = {cell; marker}
 end

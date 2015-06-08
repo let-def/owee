@@ -3,6 +3,7 @@ type 'result service = ..
 type _ service +=
    | Name : string service
    | Traverse : ((Obj.t -> 'acc -> 'acc) -> 'acc -> 'acc) service
+   | Locate : Owee_location.t list service
 
 type 'a service_result =
   | Success of 'a

@@ -25,6 +25,8 @@ let myself = lazy begin
   map
 end
 
+let force_int i = (lnot i lxor -1)
+
 let extract obj =
   (* Extract code pointer.
      By adding 1 we compensate for the bit we lost because of int-tagging of
@@ -32,30 +34,10 @@ let extract obj =
      than the original one. It's ok, we are looking for the beginning of a
      function, and a function is at least one byte long, so being off-by-one is
      ok *)
-  let cp : t = Obj.obj (Obj.field obj 0) lor 1 in
-  (*Printf.printf "cp = 0x%X\n%!" cp;*)
-  if cp >= caml_startup__code_end then
-    cp
-  else
-    Obj.obj (Obj.field obj (Obj.size obj - 1)) lor 1
-    (*begin
-      Printf.printf "object tag:%d size:%d\n%!" (Obj.tag obj) (Obj.size obj);
-      for i = 0 to Obj.size obj - 1 do
-        let obj = Obj.field obj i in
-        if Obj.is_int obj then
-          Printf.printf "  - field %i = %d\n" i (Obj.obj obj)
-        else if Obj.is_block obj then
-          Printf.printf "  - field %i tag:%d size:%d\n%!" i (Obj.tag obj) (Obj.size obj)
-        else
-          Printf.printf "  - field %i is astract" i
-      done;
-      extract (Obj.field obj 1)
-    end*)
-    (*let obj' = Obj.field obj 1 in
-    if Obj.tag obj' = Obj.closure_tag then
-      extract obj'
-    else
-      none*)
+  let cp : t = force_int (Obj.obj (Obj.field obj 0))  in
+  if cp >= caml_startup__code_end
+  then cp
+  else force_int (Obj.obj (Obj.field obj (Obj.size obj - 1)))
 
 let extract (f : (_ -> _)) = extract (Obj.repr f)
 
@@ -63,7 +45,7 @@ exception Result of (string * int * int) option
 
 let lookup t =
   if t = none then None
-  else
+  else if Obj.is_int (Obj.repr t) then
     let lazy buffer = myself in
     let _header, sections = Owee_elf.read_elf buffer in
     match Owee_elf.find_section sections ".debug_line" with
@@ -72,6 +54,9 @@ let lookup t =
       (*Printf.eprintf "Looking for 0x%X\n" t;*)
       let body = Owee_buf.cursor (Owee_elf.section_body buffer section) in
       let open Owee_debug_line in
+      let prev_line = ref 0 in
+      let prev_col  = ref 0 in
+      let prev_file = ref None in
       let rec aux () =
         match read_chunk body with
         | None -> None
@@ -82,13 +67,16 @@ let lookup t =
                | None -> "?"
                | Some filename -> filename
               ) state.line address state.address;*)
-            if address lsr 1 <= t && t <= state.address lsr 1 then
-              begin match get_filename header state with
+            if address lsr 1 <= t && t < state.address lsr 1 then
+              begin match !prev_file with
                 | None ->
                   raise (Result None)
                 | Some filename ->
-                  raise (Result (Some (filename, state.line, state.col)))
+                  raise (Result (Some (filename, !prev_line, !prev_col)))
               end;
+            prev_file := get_filename header state;
+            prev_line := state.line;
+            prev_col := state.col;
             if state.end_sequence
             then max_int
             else state.address
@@ -98,5 +86,12 @@ let lookup t =
       in
       try aux ()
       with Result r -> r
+  else
+    let t = Obj.repr t in
+    assert (Obj.tag t = 0);
+    assert (Obj.size t = 1);
+    assert (Obj.size (Obj.field t 0) = 3);
+    Obj.obj t
+
 
 let locate f = lookup (extract f)

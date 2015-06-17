@@ -16,24 +16,51 @@ type 'a marker = {
   magic_potion: Obj.t;
   service: 'result. 'a -> 'result service -> 'result service_result;
 }
+let size_marker = 2
+
+type 'a cycle_marker = {
+  magic_potion: Obj.t;
+  original: 'a marker;
+  unique_id: int;
+  mutable users: int;
+}
+let size_cycle_marker = 4
+
+let unique_ids = ref 0
+
+let make_cycle_marker (marker : _ marker) = {
+  magic_potion;
+  original = marker;
+  unique_id = (incr unique_ids; !unique_ids);
+  users = 0
+}
 
 let is_marker obj =
-  Obj.tag obj = 0 && Obj.size obj = 2 && Obj.field obj 0 == magic_potion
+  if Obj.tag obj = 0 && Obj.size obj >= 2 && Obj.field obj 0 == magic_potion then
+    if Obj.size obj = size_marker then `Marker
+    else if Obj.size obj = size_cycle_marker then `Cycle_marker
+    else `No
+  else `No
 
-exception Found of Obj.t marker
+let find_marker t =
+  let rec aux (obj : 'a) i j =
+    if i >= j then `No else
+      let obj' = Obj.field (Obj.repr obj) i in
+      match is_marker obj' with
+      | `Marker -> `Marker (i, (Obj.obj obj' : 'a marker))
+      | `Cycle_marker -> `Cycle_marker (i, (Obj.obj obj' : 'a cycle_marker))
+      | `No -> aux obj (i + 1) j
+  in
+  let obj = Obj.repr t in
+  if Obj.tag obj < Obj.lazy_tag
+  then aux t 0 (Obj.size obj)
+  else `No
 
 let query_service t service =
-  let obj = Obj.repr t in
-  try
-    if Obj.tag obj < Obj.lazy_tag then
-      for i = 0 to Obj.size obj - 1 do
-        let obj' = (Obj.field obj i) in
-        if is_marker obj' then
-          raise (Found (Obj.obj obj'))
-      done;
-    Unmanaged_object
-  with Found marker ->
-    marker.service obj service
+  match find_marker t with
+  | `No -> Unmanaged_object
+  | `Marker (_,marker) | `Cycle_marker (_,{original = marker; _}) ->
+    marker.service t service
 
 module type T0 = sig
   type t
@@ -46,10 +73,18 @@ end = struct
   let marker = M.({ magic_potion; service })
 end
 
+let unique_id = ref 0
+
 type 'a marked = {
   cell: 'a;
+  unique_id: int;
   marker: 'a marked marker;
 }
+
+let make_marked cell marker =
+  incr unique_id;
+  {cell; marker; unique_id = !unique_id}
+
 let get t = t.cell
 
 module Safe0 (M : T0) : sig
@@ -57,9 +92,10 @@ module Safe0 (M : T0) : sig
 end = struct
   include Unsafe0(struct
       type t = M.t marked
-      let service obj request = M.service obj.cell request
+      let service obj (type a) (request : a service) : a service_result =
+        M.service obj.cell request
     end)
-  let mark cell = {cell; marker}
+  let mark cell = make_marked cell marker
 end
 
 (******)
@@ -80,9 +116,10 @@ module Safe1 (M : T1) : sig
 end = struct
   include Unsafe1(struct
       type 'a t = 'a M.t marked
-      let service obj request = M.service obj.cell request
+      let service obj (type a) (request : a service) : a service_result =
+        M.service obj.cell request
     end)
-  let mark cell = {cell; marker}
+  let mark cell = make_marked cell marker
 end
 
 module type T2 = sig
@@ -101,9 +138,10 @@ module Safe2 (M : T2) : sig
 end = struct
   include Unsafe2(struct
       type ('a, 'b) t = ('a, 'b) M.t marked
-      let service obj request = M.service obj.cell request
+      let service obj (type a) (request : a service) : a service_result =
+        M.service obj.cell request
     end)
-  let mark cell = {cell; marker}
+  let mark cell = make_marked cell marker
 end
 
 module type T3 = sig
@@ -122,7 +160,75 @@ module Safe3 (M : T3) : sig
 end = struct
   include Unsafe3(struct
       type ('a, 'b, 'c) t = ('a, 'b, 'c) M.t marked
-      let service obj request = M.service obj.cell request
+      let service obj (type a) (request : a service) : a service_result =
+        M.service obj.cell request
     end)
-  let mark cell = {cell; marker}
+  let mark cell = make_marked cell marker
 end
+
+(* Cycle detection *)
+
+type 'a cycle = {
+  seen_ids: (int, 'a) Hashtbl.t;
+  (* Cause uncessary retention, switch to weak array?*)
+  mutable seen_objs: Obj.t list;
+}
+
+let seen cycle obj =
+  match find_marker obj with
+  | `No -> `Unmanaged
+  | `Marker _ -> `Not_seen
+  | `Cycle_marker (_,marker) ->
+    begin match Hashtbl.find cycle.seen_ids marker.unique_id with
+      | a -> `Seen (a, marker.unique_id)
+      | exception Not_found -> `Not_seen
+    end
+
+let add_to_cycle cycle (obj : 'a) (marker : 'a cycle_marker) a =
+  marker.users <- marker.users + 1;
+  Hashtbl.add cycle.seen_ids marker.unique_id a;
+  cycle.seen_objs <- Obj.repr obj :: cycle.seen_objs;
+  `Now_seen marker.unique_id
+
+let update_marker (obj : 'a) (field : int) (marker : 'a marker) =
+  Obj.set_field (Obj.repr obj) field (Obj.repr marker)
+
+let update_cycle_marker (obj : 'a) (field : int) (marker : 'a cycle_marker) =
+  Obj.set_field (Obj.repr obj) field (Obj.repr marker)
+
+let mark_seen cycle obj a =
+  match find_marker obj with
+  | `No -> `Unmanaged
+  | `Marker (i,marker) ->
+    let marker = make_cycle_marker marker in
+    update_cycle_marker obj i marker;
+    add_to_cycle cycle obj marker a
+  | `Cycle_marker (_,marker) ->
+    match Hashtbl.find cycle.seen_ids marker.unique_id with
+    | a -> `Already_seen (a, marker.unique_id)
+    | exception Not_found ->
+      add_to_cycle cycle obj marker a
+
+let unmark_seen obj =
+  match find_marker obj with
+  | `Cycle_marker (i,marker) ->
+    marker.users <- marker.users - 1;
+    if marker.users = 0 then
+      update_marker obj i marker.original
+  | `Marker _ ->
+    prerr_endline "UNEXPECTED MARKER";
+    assert false
+  | `No ->
+    prerr_endline "UNEXPECTED UNMANAGED";
+    assert false
+
+let end_cycle cycle =
+  Hashtbl.reset cycle.seen_ids;
+  let seen_objs = cycle.seen_objs in
+  cycle.seen_objs <- [];
+  List.iter unmark_seen seen_objs
+
+let start_cycle () =
+  let cycle = { seen_ids = Hashtbl.create 7; seen_objs = [] } in
+  Gc.finalise end_cycle cycle;
+  cycle

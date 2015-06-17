@@ -61,3 +61,12 @@ end
 module Unsafe3 (M : T3) : sig
   val marker : ('x, 'y, 'z) M.t marker
 end
+
+(* Cycle detection *)
+type 'a cycle
+val start_cycle : unit -> 'a cycle
+val end_cycle : 'a cycle -> unit
+
+val seen : 'a cycle -> Obj.t -> [`Seen of 'a * int | `Not_seen | `Unmanaged]
+val mark_seen : 'a cycle -> Obj.t -> 'a -> [`Already_seen of 'a * int | `Now_seen of int | `Unmanaged]
+

@@ -28,10 +28,14 @@ let size_cycle_marker = 4
 
 let unique_ids = ref 0
 
+let fresh_name () =
+  incr unique_ids;
+  !unique_ids
+
 let make_cycle_marker (marker : _ marker) = {
   magic_potion;
   original = marker;
-  unique_id = (incr unique_ids; !unique_ids);
+  unique_id = fresh_name ();
   users = 0
 }
 
@@ -73,17 +77,12 @@ end = struct
   let marker = M.({ magic_potion; service })
 end
 
-let unique_id = ref 0
-
 type 'a marked = {
   cell: 'a;
-  unique_id: int;
   marker: 'a marked marker;
 }
 
-let make_marked cell marker =
-  incr unique_id;
-  {cell; marker; unique_id = !unique_id}
+let make_marked cell marker = {cell; marker}
 
 let get t = t.cell
 

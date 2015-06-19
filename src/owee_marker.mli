@@ -70,3 +70,4 @@ val end_cycle : 'a cycle -> unit
 val seen : 'a cycle -> Obj.t -> [`Seen of 'a * int | `Not_seen | `Unmanaged]
 val mark_seen : 'a cycle -> Obj.t -> 'a -> [`Already_seen of 'a * int | `Now_seen of int | `Unmanaged]
 
+val fresh_name : unit -> int

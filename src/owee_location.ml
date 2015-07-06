@@ -1,16 +1,7 @@
 type t
 
-external owee_get_symbol : string -> t =
-  "ml_owee_get_symbol" "ml_owee_get_symbol" "noalloc"
-
-(*let caml_startup_code_begin =
-  owee_get_symbol "caml_startup_code_begin"*)
-let caml_startup__code_end =
-  owee_get_symbol "caml_startup__code_end"
-
-(*let () =
-  Printf.printf "caml_startup__code_end = 0x%X\n%!"
-    caml_startup__code_end*)
+external extract : (_ -> _) -> t =
+  "ml_owee_code_pointer" "ml_owee_code_pointer" "noalloc"
 
 let myself = lazy begin
   (* 64-bit linux only :p *)
@@ -26,20 +17,6 @@ end
 
 let force_int i : t = Obj.magic (lnot i lxor -1)
 let none = force_int 0
-
-let extract obj =
-  (* Extract code pointer.
-     By adding 1 we compensate for the bit we lost because of int-tagging of
-     the original address, although the resulting address might be one more
-     than the original one. It's ok, we are looking for the beginning of a
-     function, and a function is at least one byte long, so being off-by-one is
-     ok *)
-  let cp : t = force_int (Obj.obj (Obj.field obj 0))  in
-  if cp >= caml_startup__code_end
-  then cp
-  else force_int (Obj.obj (Obj.field obj (Obj.size obj - 1)))
-
-let extract (f : (_ -> _)) = extract (Obj.repr f)
 
 let count_rows body =
   let open Owee_debug_line in

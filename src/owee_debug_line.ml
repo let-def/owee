@@ -228,12 +228,12 @@ let step header section state f acc =
     done;
     acc
 
-let rec interpret header section state f acc =
+let rec fold_rows header section state f acc =
   if at_end section then
     acc
   else
-    interpret header section state f
+    fold_rows header section state f
       (step header section state f acc)
 
-let interpret header section f acc =
-  interpret header section (initial_state header) f acc
+let fold_rows (header,section) f acc =
+  fold_rows header section (initial_state header) f acc

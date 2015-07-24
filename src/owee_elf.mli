@@ -1,5 +1,7 @@
 open Owee_buf
 
+(** Minimalist ELF 64 decoder *)
+
 type identification = {
   elf_class      : u8;
   elf_data       : u8;
@@ -39,6 +41,13 @@ type section = {
   sh_name_str  : string;
 }
 
+(** From a buffer pointing to an ELF image, [read_elf] decodes the header and
+    section table. *)
 val read_elf : Owee_buf.t -> header * section array
+
+(** [section_body elf section] returns a sub-buffer with the contents of the
+    [section] of the ELF image. *)
 val section_body : Owee_buf.t -> section -> Owee_buf.t
+
+(** Convenience function to find a section in the section table given its name. *)
 val find_section : section array -> string -> section option

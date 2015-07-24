@@ -1,3 +1,4 @@
+(* WIP: fancy module for graph manipulation and simple rewriting *)
 (* Graph definition *)
 
 type style = unit

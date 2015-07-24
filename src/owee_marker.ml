@@ -167,8 +167,10 @@ end
 
 (* Cycle detection *)
 
-type 'a cycle = {
-  seen_ids: (int, 'a) Hashtbl.t;
+type cycle = {
+  (* FIXME: someday, find better than an hashtable, or maybe just drop cycle
+            detection to some library like Phystable? *)
+  seen_ids: (int, unit) Hashtbl.t;
   (* Cause uncessary retention, switch to weak array?*)
   mutable seen_objs: Obj.t list;
 }
@@ -178,14 +180,14 @@ let seen cycle obj =
   | `No -> `Unmanaged
   | `Marker _ -> `Not_seen
   | `Cycle_marker (_,marker) ->
-    begin match Hashtbl.find cycle.seen_ids marker.unique_id with
-      | a -> `Seen (a, marker.unique_id)
-      | exception Not_found -> `Not_seen
-    end
+    if Hashtbl.mem cycle.seen_ids marker.unique_id then
+      `Seen marker.unique_id
+    else
+      `Not_seen
 
-let add_to_cycle cycle (obj : 'a) (marker : 'a cycle_marker) a =
+let add_to_cycle cycle (obj : 'a) (marker : 'a cycle_marker) =
   marker.users <- marker.users + 1;
-  Hashtbl.add cycle.seen_ids marker.unique_id a;
+  Hashtbl.add cycle.seen_ids marker.unique_id ();
   cycle.seen_objs <- Obj.repr obj :: cycle.seen_objs;
   `Now_seen marker.unique_id
 
@@ -195,18 +197,18 @@ let update_marker (obj : 'a) (field : int) (marker : 'a marker) =
 let update_cycle_marker (obj : 'a) (field : int) (marker : 'a cycle_marker) =
   Obj.set_field (Obj.repr obj) field (Obj.repr marker)
 
-let mark_seen cycle obj a =
+let mark_seen cycle obj =
   match find_marker obj with
   | `No -> `Unmanaged
   | `Marker (i,marker) ->
     let marker = make_cycle_marker marker in
     update_cycle_marker obj i marker;
-    add_to_cycle cycle obj marker a
+    add_to_cycle cycle obj marker
   | `Cycle_marker (_,marker) ->
-    match Hashtbl.find cycle.seen_ids marker.unique_id with
-    | a -> `Already_seen (a, marker.unique_id)
-    | exception Not_found ->
-      add_to_cycle cycle obj marker a
+    if Hashtbl.mem cycle.seen_ids marker.unique_id then
+      `Already_seen marker.unique_id
+    else
+      add_to_cycle cycle obj marker
 
 let unmark_seen obj =
   match find_marker obj with

@@ -25,7 +25,7 @@ let count_rows body =
   let rec aux () =
     match read_chunk cursor with
     | None -> !count
-    | Some (header, chunk) ->
+    | Some line_program ->
       let check _header state address =
         if address <> max_int then
           incr count;
@@ -33,7 +33,7 @@ let count_rows body =
         then max_int
         else state.address
       in
-      let _ : int = interpret header chunk check max_int in
+      let _ : int = fold_rows line_program check max_int in
       aux ()
   in
   aux ()
@@ -68,7 +68,7 @@ let store_rows body array =
         else
           state.address
       in
-      let _ : int = interpret header chunk check max_int in
+      let _ : int = fold_rows (header, chunk) check max_int in
       aux ()
   in
   aux ()

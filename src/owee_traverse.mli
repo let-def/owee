@@ -1,3 +1,5 @@
+
+(** WIP, a tool for generating explicit graphs out of marked objects *)
 type location = Owee_location.t
 
 type 'a trace = Trace of int * string * 'a list * 'a trace list lazy_t

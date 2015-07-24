@@ -5,6 +5,7 @@ owee:
 	
 clean:
 	$(MAKE) -C src $@
+	$(MAKE) -C examples $@
 
 .PHONY: all owee clean install uninstall reinstall
 
@@ -44,3 +45,6 @@ uninstall:
 reinstall:
 	-$(MAKE) uninstall
 	$(MAKE) install
+
+examples:
+	$(MAKE) -C examples

@@ -2,7 +2,11 @@
    output should be similar to
    objdump --dwarf=decodedline <mybin>
 *)
-let path = Sys.argv.(1)
+let path =
+  if Array.length Sys.argv <= 1 then
+    (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf"); exit 1)
+  else
+    Sys.argv.(1)
 
 let buffer =
   let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
@@ -24,13 +28,14 @@ let () =
       | None -> ()
       | Some (header, chunk) ->
         let check header state () =
-          if not state.Owee_debug_line.end_sequence then
-          match Owee_debug_line.get_filename header state with
+          let open Owee_debug_line in
+          if not state.end_sequence then
+          match get_filename header state with
           | None -> ()
           | Some filename ->
             Printf.printf "%s\t%d\t0x%x\n" filename state.line state.address
         in
-        Owee_debug_line.interpret header chunk check ();
+        Owee_debug_line.fold_rows (header, chunk) check ();
         aux ()
     in
     aux ()

@@ -1,8 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/address_class.h>
+
+/* Use dladdr. Should work at least with Linux, FreeBSD and OS X. */
+#define _GNU_SOURCE
+/* Because the previous one is sometime ignored, GNU LOLism. */
+#define __USE_GNU
+#include <dlfcn.h>
 
 /* Assumptions on caml startup code:
  *
@@ -48,4 +55,19 @@ CAMLprim value ml_owee_code_pointer(value closure)
 {
   void *result = closure_code_pointer(closure);
   return ((intnat)result | 1);
+}
+
+CAMLprim value ml_owee_code_pointer_symbol(value cp)
+{
+  const char * result = "";
+  Dl_info info;
+
+  if ((intnat)cp != 1 &&
+      dladdr((void*)cp, &info) != 0 &&
+      info.dli_sname != NULL)
+  {
+    result = info.dli_sname;
+  }
+
+  return caml_copy_string(result);
 }

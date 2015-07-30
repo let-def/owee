@@ -82,8 +82,8 @@ let rec gather_locations cycle start_depth depth obj acc =
       | Success locs -> locs
       | Unmanaged_object | Unsupported_service -> []
     in
-    match Owee_marker.mark_seen cycle obj () with
-    | `Already_seen ((), counter) -> Trace (counter, "", [], lazy []) :: acc
+    match Owee_marker.mark_seen cycle obj with
+    | `Already_seen counter -> Trace (counter, "", [], lazy []) :: acc
     | `Now_seen uid ->
       begin match query_service obj Traverse with
         | Success fold ->

@@ -112,3 +112,44 @@ let lookup t =
     Obj.obj t
 
 let locate f = lookup (extract f)
+
+external nearest_symbol : t -> string = "ml_owee_code_pointer_symbol"
+
+let demangled_symbol s =
+  let len = String.length s in
+  if len <= 4
+     || s.[0] <> 'c'
+     || s.[1] <> 'a'
+     || s.[2] <> 'm'
+     || s.[3] <> 'l'
+  then s
+  else
+    let end_of_name = ref len in
+    let skip_at_end = function
+      | '0'..'9' -> true
+      | '_' -> true
+      | _ -> false
+    in
+    while !end_of_name > 4 && skip_at_end s.[!end_of_name - 1] do
+      decr end_of_name
+    done;
+    let buf = Buffer.create len in
+    let skip = ref false in
+    for i = 4 to !end_of_name - 1 do
+      if !skip then
+        skip := false
+      else if s.[i] = '_'
+         && i + 1 < len
+         && s.[i + 1] = '_'
+      then (Buffer.add_char buf '.'; skip := true)
+      else
+        Buffer.add_char buf s.[i]
+    done;
+    if !end_of_name < len then
+      (Buffer.add_char buf '/';
+       let e = !end_of_name + 1 in
+       Buffer.add_substring buf s e (len - e));
+    Buffer.contents buf
+
+let nearest_demangled_symbol t =
+  demangled_symbol (nearest_symbol t)

@@ -22,3 +22,9 @@ val lookup : t -> (string * int * int) option
 (** Convenience function composing lookup and extract, to immediately turn a
     function into a position. *)
 val locate : (_ -> _) -> (string * int * int) option
+
+val nearest_symbol : t -> string
+
+val demangled_symbol : string -> string
+
+val nearest_demangled_symbol : t -> string

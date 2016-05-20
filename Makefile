@@ -32,7 +32,9 @@ DIST_FILES=               \
 	src/owee_marker.cmx     \
 	src/owee.cma            \
 	src/owee.a							\
-	src/owee.cmxa
+	src/owee.cmxa           \
+	src/dllowee_stubs.so    \
+	src/libowee_stubs.a
 
 $(DIST_FILES): owee
 

@@ -181,7 +181,6 @@ module Symbol_table = struct
       st_value : Int64.t;
       st_size : Int64.t;
       symbol_end : Int64.t;
-      zero_size : bool;
     }
 
     let struct_size = (32 + 8 + 8 + 16 + 64 + 64) / 8
@@ -246,21 +245,11 @@ module Symbol_table = struct
 
     let section_header_table_index t = t.st_shndx
 
-    let encloses_address t ~address =
-      let sym_start = value t in
-      let compared_to_sym_start = Int64.compare address sym_start in
-      if compared_to_sym_start < 0 then
-        None
-      else
-        let sym_end = t.symbol_end in
-        Some ((compared_to_sym_start >= 0 && Int64.compare address sym_end < 0)
-          || (compared_to_sym_start = 0 && t.zero_size))
+    let symbol_end t = t.symbol_end
   end
 
-  exception Symbol_not_found
-
   module One_table = struct
-    type t = Symbol.t array
+    type t = Symbol.t Owee_interval_tree.t
 
     let extract buf ~index : Symbol.t =
       let cursor = Owee_buf.cursor buf ~at:(index * Symbol.struct_size) in
@@ -270,60 +259,30 @@ module Symbol_table = struct
       let st_shndx = Owee_buf.Read.u16 cursor in
       let st_value = Int64.of_int (Owee_buf.Read.u64 cursor) in
       let st_size = Int64.of_int (Owee_buf.Read.u64 cursor) in
-      let symbol_end = Int64.add st_value st_size in
-      let zero_size =
-        (Int64.compare st_size 0L) = 0
+      let symbol_end =
+        if Int64.compare st_size 0L = 0 then
+          Int64.add st_value 1L
+        else
+          Int64.add st_value st_size
       in
-      { st_name; st_info; st_other; st_shndx; st_value; st_size; symbol_end;
-        zero_size;
-      }
+      { st_name; st_info; st_other; st_shndx; st_value; st_size; symbol_end; }
 
     let create buf =
       let num_symbols = (Owee_buf.dim buf) / Symbol.struct_size in
-      let t = Array.init num_symbols (fun index -> extract buf ~index) in
-      Array.sort (fun sym1 sym2 ->
-          Int64.compare (Symbol.value sym1) (Symbol.value sym2))
-        t;
-      t
+      let interval_array =
+        Array.init num_symbols (fun index ->
+          let symbol = extract buf ~index in
+          Owee_interval_tree.Interval.create
+            (Symbol.value symbol)
+            (Symbol.symbol_end symbol)
+            symbol)
+      in
+      Owee_interval_tree.create (Array.to_list interval_array)
 
-    let num_symbols t = Array.length t
-
-    let get_symbol t ~index =
-      if index < 0 || index >= num_symbols t then None
-      else Some t.(index)
-
-    let get_symbol_exn t ~index =
-      match get_symbol t ~index with
-      | Some symbol -> symbol
-      | None -> failwith "Owee_elf.get_symbol_exn: index out of bounds"
-
-    let iter t ~f =
-      for index = 0 to (num_symbols t) - 1 do
-        f (get_symbol_exn t ~index)
-      done
-
-    let fold t ~init ~f =
-      let acc = ref init in
-      for index = 0 to (num_symbols t) - 1 do
-        acc := f (get_symbol_exn t ~index) !acc
-      done;
-      !acc
-
-    exception Symbol_found of Symbol.t
-
-    (* CR-soon mshinwell: replace by binary search, but it's tricky *)
-    let symbols_enclosing_address_exn ?one_only t ~address =
-      try
-        fold t ~init:[] ~f:(fun sym acc ->
-          match Symbol.encloses_address sym ~address with
-          | None -> raise Symbol_not_found
-          | Some false -> acc
-          | Some true ->
-            match one_only with
-            | None -> sym::acc
-            | Some () -> raise (Symbol_found sym))
-      with
-      | Symbol_found sym -> [sym]
+    let symbols_enclosing_address_exn t ~address =
+      List.map (fun (interval : Symbol.t Owee_interval_tree.Interval.t) ->
+          interval.value)
+        (Owee_interval_tree.query t address)
   end
 
   type t = One_table.t list
@@ -331,30 +290,19 @@ module Symbol_table = struct
   let create bufs =
     List.map (fun buf -> One_table.create buf) bufs
 
-  let iter t ~f =
-    List.iter (fun one_table -> One_table.iter one_table ~f) t
+  let symbols_enclosing_address t ~address =
+    List.fold_left (fun acc one_table ->
+        (One_table.symbols_enclosing_address_exn one_table ~address)
+          @ acc)
+      [] t
 
-  let fold t ~init ~f =
-    List.fold_left (fun init one_table -> One_table.fold one_table ~init ~f)
-      init t
-
-  let symbols_enclosing_address ?one_only t ~address =
-    try
-      List.fold_left (fun acc one_table ->
-          (One_table.symbols_enclosing_address_exn ?one_only one_table
-              ~address)
-            @ acc)
-        [] t
-    with
-    | Symbol_not_found -> []
-
-  let functions_enclosing_address ?one_only t ~address =
+  let functions_enclosing_address t ~address =
     List.filter (fun sym ->
         match Symbol.type_attribute sym with
         | Func -> true
         | Notype | Object | Section | File
         | Common | TLS | GNU_ifunc | Other _ -> false)
-      (symbols_enclosing_address ?one_only t ~address)
+      (symbols_enclosing_address t ~address)
 end
 
 let find_symbol_table buf sections =

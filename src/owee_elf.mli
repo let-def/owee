@@ -114,26 +114,17 @@ module Symbol_table : sig
     val section_header_table_index : t -> int
   end
 
-  (** Iterate over all symbols in the table. *)
-  val iter : t -> f:(Symbol.t -> unit) -> unit
-
-  (** Fold over all symbols in the table. *)
-  val fold : t -> init:'a -> f:(Symbol.t -> 'a -> 'a) -> 'a
-
   (** The symbols in the table whose value and size determine that they
-      cover [address].  If [one_only] is provided then only at most one
-      symbol is returned. *)
+      cover [address]. *)
   val symbols_enclosing_address
-     : ?one_only:unit
-    -> t
+     : t
     -> address:Int64.t
     -> Symbol.t list
 
   (** As for [symbols_enclosing_address], but only returns function
       symbols. *)
   val functions_enclosing_address
-     : ?one_only:unit
-    -> t
+     : t
     -> address:Int64.t
     -> Symbol.t list
 end

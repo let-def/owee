@@ -4,6 +4,7 @@ type t =
   (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 
 (** Size of the buffer *)
+(* CR mshinwell: rename to "size" *)
 val dim     : t -> int
 
 (** Minimal support for error reporting. FIXME: Improve that someday. *)
@@ -20,6 +21,7 @@ type u8   = int
 type u16  = int
 type s32  = int
 type u32  = int
+(* CR mshinwell: u64 should be Int64.t *)
 type u64  = int (* Bye bye 32 bits. 63 bits ought to be enough for anyone. *)
 type s128 = int (* Ahem, we don't expect 128 bits to really consume 128 bits *)
 type u128 = int
@@ -56,5 +58,6 @@ module Read : sig
 
   (** [zero_string msg t ?maxlen ()] reads a zero-terminated string from [t],
       stopping at the first zero or when [maxlen] is reached, if it was provided. *)
+  (* CR mshinwell: delete the first argument and return an option *)
   val zero_string : string -> cursor -> ?maxlen:int -> unit -> string
 end

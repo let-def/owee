@@ -51,3 +51,68 @@ val section_body : Owee_buf.t -> section -> Owee_buf.t
 
 (** Convenience function to find a section in the section table given its name. *)
 val find_section : section array -> string -> section option
+
+(** Find the body of a section given its name. *)
+val find_section_body
+   : Owee_buf.t
+  -> section array
+  -> section_name:string
+  -> Owee_buf.t option
+
+module String_table : sig
+  type t
+
+  (* CR-someday mshinwell: [index] should probably be [Int32.t] *)
+  val get_string : t -> index:int -> string option
+end
+
+val find_string_table : Owee_buf.t -> section array -> String_table.t option
+
+module Symbol_table : sig
+  type t
+
+  module Symbol : sig
+    type t
+
+    type type_attribute =
+      | Notype
+      | Object
+      | Func
+      | Section
+      | File
+      | Common
+      | TLS
+      | GNU_ifunc
+      | Other of int
+
+    type binding_attribute =
+      | Local
+      | Global
+      | Weak
+      | GNU_unique
+      | Other of int
+
+    type visibility =
+      | Default
+      | Internal
+      | Hidden
+      | Protected
+
+    val name : t -> String_table.t -> string option
+    val value : t -> Int64.t
+    val size : t -> Int64.t
+    val type_attribute : t -> type_attribute
+    val binding_attribute : t -> binding_attribute
+    val visibility : t -> visibility
+    val section_header_table_index : t -> int
+  end
+
+  (* CR-someday mshinwell: [int] may not strictly be correct *)
+  val num_symbols : t -> int
+  val get_symbol : t -> index:int -> Symbol.t option
+
+  (** Iterate over all symbols in the table. *)
+  val iter : t -> f:(Symbol.t -> unit) -> unit
+end
+
+val find_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option

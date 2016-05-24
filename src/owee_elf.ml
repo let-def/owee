@@ -1,3 +1,5 @@
+[@@@ocaml.warning "+a-4-9-30-40-41-42"]
+
 open Owee_buf
 
 let read_magic t =
@@ -21,6 +23,8 @@ type identification = {
   elf_abiversion : u8;
 }
 
+let elfclass64 = 2
+
 let read_identification t =
   ensure t 12 "Identification truncated";
   let elf_class      = Read.u8 t in
@@ -35,8 +39,12 @@ let read_identification t =
           Read.u8 t = 0 &&
           Read.u8 t = 0 &&
           Read.u8 t = 0)
-  then
-    invalid_format "Incorrect padding after identification";
+  then begin
+    invalid_format "Incorrect padding after identification"
+  end;
+  if elf_class != elfclass64 then begin
+    failwith "owee only supports ELFCLASS64 files"
+  end;
   { elf_class; elf_data; elf_version;
     elf_osabi; elf_abiversion }
 
@@ -143,3 +151,132 @@ let find_section sections name =
     None
   with Found section ->
     Some section
+
+let find_section_body buf sections ~section_name =
+  match find_section sections section_name with
+  | None -> None
+  | Some section -> Some (section_body buf section)
+
+module String_table = struct
+  type t = Owee_buf.t
+
+  let get_string t ~index =
+    if index < 0 || index >= Owee_buf.dim t then
+      None
+    else
+      let cursor = Owee_buf.cursor t ~at:index in
+      Some (Owee_buf.Read.zero_string "boo!" cursor ())
+end
+
+let find_string_table buf sections =
+  find_section_body buf sections ~section_name:".strtab"
+
+module Symbol_table = struct
+  type t = Owee_buf.t
+
+  module Symbol = struct
+    type t = {
+      st_name : u32;
+      st_info : u8;
+      st_other : u8;
+      st_shndx : u16;
+      st_value : u64;
+      st_size : u64;
+    }
+
+    let struct_size = (32 + 8 + 8 + 16 + 64 + 64) / 8
+
+    type type_attribute =
+      | Notype
+      | Object
+      | Func
+      | Section
+      | File
+      | Common
+      | TLS
+      | GNU_ifunc
+      | Other of int
+
+    type binding_attribute =
+      | Local
+      | Global
+      | Weak
+      | GNU_unique
+      | Other of int
+
+    type visibility =
+      | Default
+      | Internal
+      | Hidden
+      | Protected
+
+    let name t string_table =
+      String_table.get_string string_table ~index:t.st_name
+
+    let value t = Int64.of_int t.st_value
+    let size t = Int64.of_int t.st_size
+
+    let type_attribute t =
+      match t.st_info land 0xf with
+      | 0 -> Notype
+      | 1 -> Object
+      | 2 -> Func
+      | 3 -> Section
+      | 4 -> File
+      | 5 -> Common
+      | 6 -> TLS
+      | 10 -> GNU_ifunc
+      | x -> Other x
+
+    let binding_attribute t =
+      match t.st_info lsr 4 with
+      | 0 -> Local
+      | 1 -> Global
+      | 2 -> Weak
+      | 10 -> GNU_unique
+      | x -> Other x
+
+    let visibility t =
+      match t.st_other land 0x3 with
+      | 0 -> Default
+      | 1 -> Internal
+      | 2 -> Hidden
+      | 3 -> Protected
+      | _ -> assert false
+
+    let section_header_table_index t = t.st_shndx
+  end
+
+  let num_symbols t =
+    (Owee_buf.dim t) / Symbol.struct_size
+
+  let get_symbol t ~index =
+    if index < 0 || index >= num_symbols t then begin
+      None
+    end else begin
+      let cursor = Owee_buf.cursor t ~at:(index * Symbol.struct_size) in
+      let st_name = Owee_buf.Read.u32 cursor in
+      let st_info = Owee_buf.Read.u8 cursor in
+      let st_other = Owee_buf.Read.u8 cursor in
+      let st_shndx = Owee_buf.Read.u16 cursor in
+      let st_value = Owee_buf.Read.u64 cursor in
+      let st_size = Owee_buf.Read.u64 cursor in
+      let symbol : Symbol.t =
+        { st_name; st_info; st_other; st_shndx; st_value; st_size; }
+      in
+      Some symbol
+    end
+
+  let get_symbol_exn t ~index =
+    match get_symbol t ~index with
+    | Some symbol -> symbol
+    | None -> failwith "Owee_elf.get_symbol_exn: index out of bounds"
+
+  let iter t ~f =
+    for index = 0 to (num_symbols t) - 1 do
+      f (get_symbol_exn t ~index)
+    done
+end
+
+let find_symbol_table buf sections =
+  find_section_body buf sections ~section_name:".symtab"

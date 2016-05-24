@@ -214,7 +214,7 @@ module Symbol_table = struct
       String_table.get_string string_table ~index:t.st_name
 
     let value t = Int64.of_int t.st_value
-    let size t = Int64.of_int t.st_size
+    let size_in_bytes t = Int64.of_int t.st_size
 
     let type_attribute t =
       match t.st_info land 0xf with
@@ -288,7 +288,9 @@ module Symbol_table = struct
   let symbols_enclosing_address t ~address =
     fold t ~init:[] ~f:(fun sym acc ->
       let sym_start = Symbol.value sym in
-      let sym_end = Int64.add (Symbol.value sym) (Symbol.size sym) in
+      let sym_end =
+        Int64.add (Symbol.value sym) (Symbol.size_in_bytes sym)
+      in
       if Int64.compare address sym_start >= 0
         && Int64.compare address sym_end < 0
       then

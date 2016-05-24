@@ -101,8 +101,12 @@ module Symbol_table : sig
       | Protected
 
     val name : t -> String_table.t -> string option
+
+    (** For avoidance of doubt, when [t] is a function symbol, [value]
+        returns the address of the top of the function. *)
     val value : t -> Int64.t
-    val size : t -> Int64.t
+
+    val size_in_bytes : t -> Int64.t
     val type_attribute : t -> type_attribute
     val binding_attribute : t -> binding_attribute
     val visibility : t -> visibility

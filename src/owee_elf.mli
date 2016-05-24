@@ -121,12 +121,21 @@ module Symbol_table : sig
   val fold : t -> init:'a -> f:(Symbol.t -> 'a -> 'a) -> 'a
 
   (** The symbols in the table whose value and size determine that they
-      cover [address]. *)
-  val symbols_enclosing_address : t -> address:Int64.t -> Symbol.t list
+      cover [address].  If [one_only] is provided then only at most one
+      symbol is returned. *)
+  val symbols_enclosing_address
+     : ?one_only:unit
+    -> t
+    -> address:Int64.t
+    -> Symbol.t list
 
   (** As for [symbols_enclosing_address], but only returns function
       symbols. *)
-  val functions_enclosing_address : t -> address:Int64.t -> Symbol.t list
+  val functions_enclosing_address
+     : ?one_only:unit
+    -> t
+    -> address:Int64.t
+    -> Symbol.t list
 end
 
 (** Fish out both the dynamic and static symbol tables (.dynsym and .symtab)

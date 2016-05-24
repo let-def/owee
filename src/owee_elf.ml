@@ -260,7 +260,11 @@ module Symbol_table = struct
 
     let create buf =
       let num_symbols = (Owee_buf.dim buf) / Symbol.struct_size in
-      Array.init num_symbols (fun index -> extract buf ~index)
+      let t = Array.init num_symbols (fun index -> extract buf ~index) in
+      Array.sort (fun sym1 sym2 ->
+          Int64.compare (Symbol.value sym1) (Symbol.value sym2))
+        t;
+      t
 
     let num_symbols t = Array.length t
 
@@ -298,28 +302,41 @@ module Symbol_table = struct
     List.fold_left (fun init one_table -> One_table.fold one_table ~init ~f)
       init t
 
-  let symbols_enclosing_address t ~address =
-    fold t ~init:[] ~f:(fun sym acc ->
-      let sym_start = Symbol.value sym in
-      let sym_end =
-        Int64.add (Symbol.value sym) (Symbol.size_in_bytes sym)
-      in
-      if (Int64.compare address sym_start >= 0
-          && Int64.compare address sym_end < 0)
-        || (Int64.compare address sym_start = 0
-          && Int64.compare sym_start sym_end = 0)
-      then
-        sym::acc
-      else
-        acc)
+  exception Symbol_found of Symbol.t
+  exception Symbol_not_found
 
-  let functions_enclosing_address t ~address =
+  let symbols_enclosing_address ?one_only t ~address =
+    try
+      fold t ~init:[] ~f:(fun sym acc ->
+        let sym_start = Symbol.value sym in
+        let sym_end =
+          Int64.add (Symbol.value sym) (Symbol.size_in_bytes sym)
+        in
+        if Int64.compare address sym_start < 0 then begin
+          raise Symbol_not_found
+        end;
+        if (Int64.compare address sym_start >= 0
+            && Int64.compare address sym_end < 0)
+          || (Int64.compare address sym_start = 0
+            && Int64.compare sym_start sym_end = 0)
+        then begin
+          match one_only with
+          | None -> sym::acc
+          | Some () -> raise (Symbol_found sym)
+        end else begin
+          acc
+        end)
+    with
+    | Symbol_found sym -> [sym]
+    | Symbol_not_found -> []
+
+  let functions_enclosing_address ?one_only t ~address =
     List.filter (fun sym ->
         match Symbol.type_attribute sym with
         | Func -> true
         | Notype | Object | Section | File
         | Common | TLS | GNU_ifunc | Other _ -> false)
-      (symbols_enclosing_address t ~address)
+      (symbols_enclosing_address ?one_only t ~address)
 end
 
 let find_symbol_table buf sections =

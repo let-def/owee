@@ -63,9 +63,11 @@ module String_table : sig
   type t
 
   (* CR-someday mshinwell: [index] should probably be [Int32.t] *)
+  (** Extract a string from the string table at the given index. *)
   val get_string : t -> index:int -> string option
 end
 
+(** Fish out the string table from the given ELF buffer and section array. *)
 val find_string_table : Owee_buf.t -> section array -> String_table.t option
 
 module Symbol_table : sig
@@ -74,7 +76,7 @@ module Symbol_table : sig
   module Symbol : sig
     type t
 
-    type type_attribute =
+    type type_attribute = private
       | Notype
       | Object
       | Func
@@ -85,14 +87,14 @@ module Symbol_table : sig
       | GNU_ifunc
       | Other of int
 
-    type binding_attribute =
+    type binding_attribute = private
       | Local
       | Global
       | Weak
       | GNU_unique
       | Other of int
 
-    type visibility =
+    type visibility = private
       | Default
       | Internal
       | Hidden
@@ -107,12 +109,20 @@ module Symbol_table : sig
     val section_header_table_index : t -> int
   end
 
-  (* CR-someday mshinwell: [int] may not strictly be correct *)
-  val num_symbols : t -> int
-  val get_symbol : t -> index:int -> Symbol.t option
-
   (** Iterate over all symbols in the table. *)
   val iter : t -> f:(Symbol.t -> unit) -> unit
+
+  (** Fold over all symbols in the table. *)
+  val fold : t -> init:'a -> f:(Symbol.t -> 'a -> 'a) -> 'a
+
+  (** The symbols in the table whose value and size determine that they
+      cover [address]. *)
+  val symbols_enclosing_address : t -> address:Int64.t -> Symbol.t list
+
+  (** As for [symbols_enclosing_address], but only returns function
+      symbols. *)
+  val functions_enclosing_address : t -> address:Int64.t -> Symbol.t list
 end
 
+(** Fish out the symbol table from the given ELF buffer and section array. *)
 val find_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option

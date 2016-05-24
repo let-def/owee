@@ -178,8 +178,8 @@ module Symbol_table = struct
       st_info : u8;
       st_other : u8;
       st_shndx : u16;
-      st_value : u64;
-      st_size : u64;
+      st_value : Int64.t;
+      st_size : Int64.t;
     }
 
     let struct_size = (32 + 8 + 8 + 16 + 64 + 64) / 8
@@ -211,8 +211,8 @@ module Symbol_table = struct
     let name t string_table =
       String_table.get_string string_table ~index:t.st_name
 
-    let value t = Int64.of_int t.st_value
-    let size_in_bytes t = Int64.of_int t.st_size
+    let value t = t.st_value
+    let size_in_bytes t = t.st_size
 
     let type_attribute t =
       match t.st_info land 0xf with
@@ -254,8 +254,8 @@ module Symbol_table = struct
       let st_info = Owee_buf.Read.u8 cursor in
       let st_other = Owee_buf.Read.u8 cursor in
       let st_shndx = Owee_buf.Read.u16 cursor in
-      let st_value = Owee_buf.Read.u64 cursor in
-      let st_size = Owee_buf.Read.u64 cursor in
+      let st_value = Int64.of_int (Owee_buf.Read.u64 cursor) in
+      let st_size = Int64.of_int (Owee_buf.Read.u64 cursor) in
       { st_name; st_info; st_other; st_shndx; st_value; st_size; }
 
     let create buf =
@@ -309,12 +309,12 @@ module Symbol_table = struct
     try
       fold t ~init:[] ~f:(fun sym acc ->
         let sym_start = Symbol.value sym in
-        let sym_end =
-          Int64.add (Symbol.value sym) (Symbol.size_in_bytes sym)
-        in
         if Int64.compare address sym_start < 0 then begin
           raise Symbol_not_found
         end;
+        let sym_end =
+          Int64.add (Symbol.value sym) (Symbol.size_in_bytes sym)
+        in
         if (Int64.compare address sym_start >= 0
             && Int64.compare address sym_end < 0)
           || (Int64.compare address sym_start = 0

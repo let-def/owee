@@ -158,3 +158,13 @@ let query initial_tree qx =
         query_priv new_acc right_tree
   in
   query_priv [] initial_tree
+
+(* iter on all intervals, traversal order is not specified *)
+let rec iter tree ~f =
+  match tree with
+  | Empty -> ()
+  | Node (_, left_list, right_list, left_tree, right_tree) ->
+    List.iter f left_list;
+    iter left_tree ~f;
+    List.iter f right_list;
+    iter right_tree ~f

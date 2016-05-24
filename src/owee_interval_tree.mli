@@ -38,3 +38,7 @@ val of_triplets : (Int64.t * Int64.t * 'a) list -> 'a t
 (** [query tree q] : list of intervals in the tree [t] containing
     the Int64.t [q] *)
 val query : 'a t -> Int64.t -> 'a Interval.t list
+
+(** [iter tree ~f] calls applies [f] to each interval that has been added to
+    [tree].  Traversal order is not specified.  *)
+val iter : 'a t -> f:('a Interval.t -> unit) -> unit

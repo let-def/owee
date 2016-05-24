@@ -127,6 +127,9 @@ module Symbol_table : sig
      : t
     -> address:Int64.t
     -> Symbol.t list
+
+  (** [iter t ~f] calls f on each symbol found in [t]. *)
+  val iter : t -> f:(Symbol.t -> unit) -> unit
 end
 
 (** Fish out both the dynamic and static symbol tables (.dynsym and .symtab)

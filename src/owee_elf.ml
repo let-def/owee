@@ -303,6 +303,10 @@ module Symbol_table = struct
         | Notype | Object | Section | File
         | Common | TLS | GNU_ifunc | Other _ -> false)
       (symbols_enclosing_address t ~address)
+
+  let iter t ~f =
+    let f sym = f sym.Owee_interval_tree.Interval.value in
+    List.iter (fun tree -> Owee_interval_tree.iter tree ~f) t
 end
 
 let find_symbol_table buf sections =

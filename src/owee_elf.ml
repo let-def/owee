@@ -1,3 +1,5 @@
+[@@@ocaml.warning "+a-4-9-30-40-41-42"]
+
 open Owee_buf
 
 let read_magic t =
@@ -21,6 +23,8 @@ type identification = {
   elf_abiversion : u8;
 }
 
+let elfclass64 = 2
+
 let read_identification t =
   ensure t 12 "Identification truncated";
   let elf_class      = Read.u8 t in
@@ -35,8 +39,12 @@ let read_identification t =
           Read.u8 t = 0 &&
           Read.u8 t = 0 &&
           Read.u8 t = 0)
-  then
-    invalid_format "Incorrect padding after identification";
+  then begin
+    invalid_format "Incorrect padding after identification"
+  end;
+  if elf_class != elfclass64 then begin
+    failwith "owee only supports ELFCLASS64 files"
+  end;
   { elf_class; elf_data; elf_version;
     elf_osabi; elf_abiversion }
 
@@ -143,3 +151,166 @@ let find_section sections name =
     None
   with Found section ->
     Some section
+
+let find_section_body buf sections ~section_name =
+  match find_section sections section_name with
+  | None -> None
+  | Some section -> Some (section_body buf section)
+
+module String_table = struct
+  type t = Owee_buf.t
+
+  let get_string t ~index =
+    if index < 0 || index >= Owee_buf.dim t then
+      None
+    else
+      let cursor = Owee_buf.cursor t ~at:index in
+      Some (Owee_buf.Read.zero_string "boo!" cursor ())
+end
+
+let find_string_table buf sections =
+  find_section_body buf sections ~section_name:".strtab"
+
+module Symbol_table = struct
+  module Symbol = struct
+    type t = {
+      st_name : u32;
+      st_info : u8;
+      st_other : u8;
+      st_shndx : u16;
+      st_value : Int64.t;
+      st_size : Int64.t;
+      symbol_end : Int64.t;
+    }
+
+    let struct_size = (32 + 8 + 8 + 16 + 64 + 64) / 8
+
+    type type_attribute =
+      | Notype
+      | Object
+      | Func
+      | Section
+      | File
+      | Common
+      | TLS
+      | GNU_ifunc
+      | Other of int
+
+    type binding_attribute =
+      | Local
+      | Global
+      | Weak
+      | GNU_unique
+      | Other of int
+
+    type visibility =
+      | Default
+      | Internal
+      | Hidden
+      | Protected
+
+    let name t string_table =
+      String_table.get_string string_table ~index:t.st_name
+
+    let value t = t.st_value
+    let size_in_bytes t = t.st_size
+
+    let type_attribute t =
+      match t.st_info land 0xf with
+      | 0 -> Notype
+      | 1 -> Object
+      | 2 -> Func
+      | 3 -> Section
+      | 4 -> File
+      | 5 -> Common
+      | 6 -> TLS
+      | 10 -> GNU_ifunc
+      | x -> Other x
+
+    let binding_attribute t =
+      match t.st_info lsr 4 with
+      | 0 -> Local
+      | 1 -> Global
+      | 2 -> Weak
+      | 10 -> GNU_unique
+      | x -> Other x
+
+    let visibility t =
+      match t.st_other land 0x3 with
+      | 0 -> Default
+      | 1 -> Internal
+      | 2 -> Hidden
+      | 3 -> Protected
+      | _ -> assert false
+
+    let section_header_table_index t = t.st_shndx
+
+    let symbol_end t = t.symbol_end
+  end
+
+  module One_table = struct
+    type t = Symbol.t Owee_interval_tree.t
+
+    let extract buf ~index : Symbol.t =
+      let cursor = Owee_buf.cursor buf ~at:(index * Symbol.struct_size) in
+      let st_name = Owee_buf.Read.u32 cursor in
+      let st_info = Owee_buf.Read.u8 cursor in
+      let st_other = Owee_buf.Read.u8 cursor in
+      let st_shndx = Owee_buf.Read.u16 cursor in
+      let st_value = Int64.of_int (Owee_buf.Read.u64 cursor) in
+      let st_size = Int64.of_int (Owee_buf.Read.u64 cursor) in
+      let symbol_end =
+        if Int64.compare st_size 0L = 0 then
+          Int64.add st_value 1L
+        else
+          Int64.add st_value st_size
+      in
+      { st_name; st_info; st_other; st_shndx; st_value; st_size; symbol_end; }
+
+    let create buf =
+      let num_symbols = (Owee_buf.dim buf) / Symbol.struct_size in
+      let interval_array =
+        Array.init num_symbols (fun index ->
+          let symbol = extract buf ~index in
+          Owee_interval_tree.Interval.create
+            (Symbol.value symbol)
+            (Symbol.symbol_end symbol)
+            symbol)
+      in
+      Owee_interval_tree.create (Array.to_list interval_array)
+
+    let symbols_enclosing_address_exn t ~address =
+      List.map (fun (interval : Symbol.t Owee_interval_tree.Interval.t) ->
+          interval.value)
+        (Owee_interval_tree.query t address)
+  end
+
+  type t = One_table.t list
+
+  let create bufs =
+    List.map (fun buf -> One_table.create buf) bufs
+
+  let symbols_enclosing_address t ~address =
+    List.fold_left (fun acc one_table ->
+        (One_table.symbols_enclosing_address_exn one_table ~address)
+          @ acc)
+      [] t
+
+  let functions_enclosing_address t ~address =
+    List.filter (fun sym ->
+        match Symbol.type_attribute sym with
+        | Func -> true
+        | Notype | Object | Section | File
+        | Common | TLS | GNU_ifunc | Other _ -> false)
+      (symbols_enclosing_address t ~address)
+end
+
+let find_symbol_table buf sections =
+  let dynsym = find_section_body buf sections ~section_name:".dynsym" in
+  let symtab = find_section_body buf sections ~section_name:".symtab" in
+  match dynsym, symtab with
+  | None, None -> None
+  | Some dynsym, None -> Some (Symbol_table.create [dynsym])
+  | None, Some symtab -> Some (Symbol_table.create [symtab])
+  | Some dynsym, Some symtab ->
+    Some (Symbol_table.create [dynsym; symtab])

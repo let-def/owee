@@ -51,3 +51,84 @@ val section_body : Owee_buf.t -> section -> Owee_buf.t
 
 (** Convenience function to find a section in the section table given its name. *)
 val find_section : section array -> string -> section option
+
+(** Find the body of a section given its name. *)
+val find_section_body
+   : Owee_buf.t
+  -> section array
+  -> section_name:string
+  -> Owee_buf.t option
+
+module String_table : sig
+  type t
+
+  (* CR-someday mshinwell: [index] should probably be [Int32.t] *)
+  (** Extract a string from the string table at the given index. *)
+  val get_string : t -> index:int -> string option
+end
+
+(** Fish out the string table from the given ELF buffer and section array. *)
+val find_string_table : Owee_buf.t -> section array -> String_table.t option
+
+module Symbol_table : sig
+  (** One or more ELF symbol tables, conjoined. *)
+  type t
+
+  module Symbol : sig
+    type t
+
+    type type_attribute = private
+      | Notype
+      | Object
+      | Func
+      | Section
+      | File
+      | Common
+      | TLS
+      | GNU_ifunc
+      | Other of int
+
+    type binding_attribute = private
+      | Local
+      | Global
+      | Weak
+      | GNU_unique
+      | Other of int
+
+    type visibility = private
+      | Default
+      | Internal
+      | Hidden
+      | Protected
+
+    val name : t -> String_table.t -> string option
+
+    (** For avoidance of doubt, when [t] is a function symbol, [value]
+        returns the address of the top of the function. *)
+    val value : t -> Int64.t
+
+    val size_in_bytes : t -> Int64.t
+    val type_attribute : t -> type_attribute
+    val binding_attribute : t -> binding_attribute
+    val visibility : t -> visibility
+    val section_header_table_index : t -> int
+  end
+
+  (** The symbols in the table whose value and size determine that they
+      cover [address]. *)
+  val symbols_enclosing_address
+     : t
+    -> address:Int64.t
+    -> Symbol.t list
+
+  (** As for [symbols_enclosing_address], but only returns function
+      symbols. *)
+  val functions_enclosing_address
+     : t
+    -> address:Int64.t
+    -> Symbol.t list
+end
+
+(** Fish out both the dynamic and static symbol tables (.dynsym and .symtab)
+    from the given ELF buffer and section array. *)
+val find_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option

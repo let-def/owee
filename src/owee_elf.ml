@@ -172,8 +172,6 @@ let find_string_table buf sections =
   find_section_body buf sections ~section_name:".strtab"
 
 module Symbol_table = struct
-  type t = Owee_buf.t list
-
   module Symbol = struct
     type t = {
       st_name : u32;
@@ -248,26 +246,27 @@ module Symbol_table = struct
   end
 
   module One_table = struct
-    (* CR-someday mshinwell: [int] may not strictly be correct *)
-    let num_symbols t =
-      (Owee_buf.dim t) / Symbol.struct_size
+    type t = Symbol.t array
+
+    let extract buf ~index : Symbol.t =
+      let cursor = Owee_buf.cursor buf ~at:(index * Symbol.struct_size) in
+      let st_name = Owee_buf.Read.u32 cursor in
+      let st_info = Owee_buf.Read.u8 cursor in
+      let st_other = Owee_buf.Read.u8 cursor in
+      let st_shndx = Owee_buf.Read.u16 cursor in
+      let st_value = Owee_buf.Read.u64 cursor in
+      let st_size = Owee_buf.Read.u64 cursor in
+      { st_name; st_info; st_other; st_shndx; st_value; st_size; }
+
+    let create buf =
+      let num_symbols = (Owee_buf.dim buf) / Symbol.struct_size in
+      Array.init num_symbols (fun index -> extract buf ~index)
+
+    let num_symbols t = Array.length t
 
     let get_symbol t ~index =
-      if index < 0 || index >= num_symbols t then begin
-        None
-      end else begin
-        let cursor = Owee_buf.cursor t ~at:(index * Symbol.struct_size) in
-        let st_name = Owee_buf.Read.u32 cursor in
-        let st_info = Owee_buf.Read.u8 cursor in
-        let st_other = Owee_buf.Read.u8 cursor in
-        let st_shndx = Owee_buf.Read.u16 cursor in
-        let st_value = Owee_buf.Read.u64 cursor in
-        let st_size = Owee_buf.Read.u64 cursor in
-        let symbol : Symbol.t =
-          { st_name; st_info; st_other; st_shndx; st_value; st_size; }
-        in
-        Some symbol
-      end
+      if index < 0 || index >= num_symbols t then None
+      else Some t.(index)
 
     let get_symbol_exn t ~index =
       match get_symbol t ~index with
@@ -286,6 +285,11 @@ module Symbol_table = struct
       done;
       !acc
   end
+
+  type t = One_table.t list
+
+  let create bufs =
+    List.map (fun buf -> One_table.create buf) bufs
 
   let iter t ~f =
     List.iter (fun one_table -> One_table.iter one_table ~f) t
@@ -323,6 +327,7 @@ let find_symbol_table buf sections =
   let symtab = find_section_body buf sections ~section_name:".symtab" in
   match dynsym, symtab with
   | None, None -> None
-  | Some dynsym, None -> Some [dynsym]
-  | None, Some symtab -> Some [symtab]
-  | Some dynsym, Some symtab -> Some [dynsym; symtab]
+  | Some dynsym, None -> Some (Symbol_table.create [dynsym])
+  | None, Some symtab -> Some (Symbol_table.create [symtab])
+  | Some dynsym, Some symtab ->
+    Some (Symbol_table.create [dynsym; symtab])

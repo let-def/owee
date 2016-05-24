@@ -71,6 +71,7 @@ end
 val find_string_table : Owee_buf.t -> section array -> String_table.t option
 
 module Symbol_table : sig
+  (** One or more ELF symbol tables, conjoined. *)
   type t
 
   module Symbol : sig
@@ -128,5 +129,6 @@ module Symbol_table : sig
   val functions_enclosing_address : t -> address:Int64.t -> Symbol.t list
 end
 
-(** Fish out the symbol table from the given ELF buffer and section array. *)
+(** Fish out both the dynamic and static symbol tables (.dynsym and .symtab)
+    from the given ELF buffer and section array. *)
 val find_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option

@@ -24,141 +24,147 @@ let magic = function
   | 0xCFFAEDFE -> CIGAM64
   | _ -> invalid_format "magic"
 
-type cpu_type =
-  | X86
-  | X86_64
-  | ARM
-  | POWERPC
-  | POWERPC64
+type cpu_type = [
+  | `X86
+  | `X86_64
+  | `ARM
+  | `POWERPC
+  | `POWERPC64
+  | `Unknown of int
+]
 
 let cpu_type = function
-  | 0x00000007 -> X86
-  | 0x01000007 -> X86_64
-  | 0x0000000c -> ARM
-  | 0x00000012 -> POWERPC
-  | 0x01000012 -> POWERPC64
-  | _ -> invalid_format "cpu_type"
+  | 0x00000007 -> `X86
+  | 0x01000007 -> `X86_64
+  | 0x0000000c -> `ARM
+  | 0x00000012 -> `POWERPC
+  | 0x01000012 -> `POWERPC64
+  | n          -> `Unknown n
 
-type cpu_subtype =
-  | Intel
-  | I386_ALL
-  | I386
-  | I486
-  | I486SX
-  | PENT
-  | PENTPRO
-  | PENTII_M3
-  | PENTII_M5
-  | CELERON
-  | CELERON_MOBILE
-  | PENTIUM_3
-  | PENTIUM_3_M
-  | PENTIUM_3_XEON
-  | PENTIUM_M
-  | PENTIUM_4
-  | PENTIUM_4_M
-  | ITANIUM
-  | ITANIUM_2
-  | XEON
-  | XEON_MP
-  | INTEL_FAMILY
-  | INTEL_FAMILY_MAX
-  | INTEL_MODEL
-  | INTEL_MODEL_ALL
-  | X86_ALL
-  | X86_64_ALL
-  | X86_ARCH1
-  | POWERPC_ALL
-  | POWERPC_601
-  | POWERPC_602
-  | POWERPC_603
-  | POWERPC_603e
-  | POWERPC_603ev
-  | POWERPC_604
-  | POWERPC_604e
-  | POWERPC_620
-  | POWERPC_750
-  | POWERPC_7400
-  | POWERPC_7450
-  | POWERPC_970
-  | ARM_ALL
-  | ARM_V4T
-  | ARM_V6
+type cpu_subtype = [
+  | `Intel
+  | `I386_ALL
+  | `I386
+  | `I486
+  | `I486SX
+  | `PENT
+  | `PENTPRO
+  | `PENTII_M3
+  | `PENTII_M5
+  | `CELERON
+  | `CELERON_MOBILE
+  | `PENTIUM_3
+  | `PENTIUM_3_M
+  | `PENTIUM_3_XEON
+  | `PENTIUM_M
+  | `PENTIUM_4
+  | `PENTIUM_4_M
+  | `ITANIUM
+  | `ITANIUM_2
+  | `XEON
+  | `XEON_MP
+  | `INTEL_FAMILY
+  | `INTEL_FAMILY_MAX
+  | `INTEL_MODEL
+  | `INTEL_MODEL_ALL
+  | `X86_ALL
+  | `X86_64_ALL
+  | `X86_ARCH1
+  | `POWERPC_ALL
+  | `POWERPC_601
+  | `POWERPC_602
+  | `POWERPC_603
+  | `POWERPC_603e
+  | `POWERPC_603ev
+  | `POWERPC_604
+  | `POWERPC_604e
+  | `POWERPC_620
+  | `POWERPC_750
+  | `POWERPC_7400
+  | `POWERPC_7450
+  | `POWERPC_970
+  | `ARM_ALL
+  | `ARM_V4T
+  | `ARM_V6
+  | `Unknown of int
+]
 
 let cpu_subtype ty tag = match ty, tag with
-  | X86       , 132 -> I486SX
-  | X86       , 5   -> PENT
-  | X86       , 22  -> PENTPRO
-  | X86       , 54  -> PENTII_M3
-  | X86       , 86  -> PENTII_M5
-  | X86       , 103 -> CELERON
-  | X86       , 119 -> CELERON_MOBILE
-  | X86       , 8   -> PENTIUM_3
-  | X86       , 24  -> PENTIUM_3_M
-  | X86       , 40  -> PENTIUM_3_XEON
-  | X86       , 9   -> PENTIUM_M
-  | X86       , 10  -> PENTIUM_4
-  | X86       , 26  -> PENTIUM_4_M
-  | X86       , 11  -> ITANIUM
-  | X86       , 27  -> ITANIUM_2
-  | X86       , 12  -> XEON
-  | X86       , 28  -> XEON_MP
-  | X86       , 3   -> X86_ALL
-  | X86       , 4   -> X86_ARCH1
-  | X86_64    , 3   -> X86_64_ALL
-  | POWERPC   , 0   -> POWERPC_ALL
-  | POWERPC   , 1   -> POWERPC_601
-  | POWERPC   , 2   -> POWERPC_602
-  | POWERPC   , 3   -> POWERPC_603
-  | POWERPC   , 4   -> POWERPC_603e
-  | POWERPC   , 5   -> POWERPC_603ev
-  | POWERPC   , 6   -> POWERPC_604
-  | POWERPC   , 7   -> POWERPC_604e
-  | POWERPC   , 8   -> POWERPC_620
-  | POWERPC   , 9   -> POWERPC_750
-  | POWERPC   , 10  -> POWERPC_7400
-  | POWERPC   , 11  -> POWERPC_7450
-  | POWERPC   , 100 -> POWERPC_970
-  | POWERPC64 , 0   -> POWERPC_ALL
-  | POWERPC64 , 1   -> POWERPC_601
-  | POWERPC64 , 2   -> POWERPC_602
-  | POWERPC64 , 3   -> POWERPC_603
-  | POWERPC64 , 4   -> POWERPC_603e
-  | POWERPC64 , 5   -> POWERPC_603ev
-  | POWERPC64 , 6   -> POWERPC_604
-  | POWERPC64 , 7   -> POWERPC_604e
-  | POWERPC64 , 8   -> POWERPC_620
-  | POWERPC64 , 9   -> POWERPC_750
-  | POWERPC64 , 10  -> POWERPC_7400
-  | POWERPC64 , 11  -> POWERPC_7450
-  | POWERPC64 , 100 -> POWERPC_970
-  | ARM       , 0   -> ARM_ALL
-  | ARM       , 5   -> ARM_V4T
-  | ARM       , 6   -> ARM_V6
-  | _ -> invalid_format "cpu_subtype"
+  | `X86       , 132 -> `I486SX
+  | `X86       , 5   -> `PENT
+  | `X86       , 22  -> `PENTPRO
+  | `X86       , 54  -> `PENTII_M3
+  | `X86       , 86  -> `PENTII_M5
+  | `X86       , 103 -> `CELERON
+  | `X86       , 119 -> `CELERON_MOBILE
+  | `X86       , 8   -> `PENTIUM_3
+  | `X86       , 24  -> `PENTIUM_3_M
+  | `X86       , 40  -> `PENTIUM_3_XEON
+  | `X86       , 9   -> `PENTIUM_M
+  | `X86       , 10  -> `PENTIUM_4
+  | `X86       , 26  -> `PENTIUM_4_M
+  | `X86       , 11  -> `ITANIUM
+  | `X86       , 27  -> `ITANIUM_2
+  | `X86       , 12  -> `XEON
+  | `X86       , 28  -> `XEON_MP
+  | `X86       , 3   -> `X86_ALL
+  | `X86       , 4   -> `X86_ARCH1
+  | `X86_64    , 3   -> `X86_64_ALL
+  | `POWERPC   , 0   -> `POWERPC_ALL
+  | `POWERPC   , 1   -> `POWERPC_601
+  | `POWERPC   , 2   -> `POWERPC_602
+  | `POWERPC   , 3   -> `POWERPC_603
+  | `POWERPC   , 4   -> `POWERPC_603e
+  | `POWERPC   , 5   -> `POWERPC_603ev
+  | `POWERPC   , 6   -> `POWERPC_604
+  | `POWERPC   , 7   -> `POWERPC_604e
+  | `POWERPC   , 8   -> `POWERPC_620
+  | `POWERPC   , 9   -> `POWERPC_750
+  | `POWERPC   , 10  -> `POWERPC_7400
+  | `POWERPC   , 11  -> `POWERPC_7450
+  | `POWERPC   , 100 -> `POWERPC_970
+  | `POWERPC64 , 0   -> `POWERPC_ALL
+  | `POWERPC64 , 1   -> `POWERPC_601
+  | `POWERPC64 , 2   -> `POWERPC_602
+  | `POWERPC64 , 3   -> `POWERPC_603
+  | `POWERPC64 , 4   -> `POWERPC_603e
+  | `POWERPC64 , 5   -> `POWERPC_603ev
+  | `POWERPC64 , 6   -> `POWERPC_604
+  | `POWERPC64 , 7   -> `POWERPC_604e
+  | `POWERPC64 , 8   -> `POWERPC_620
+  | `POWERPC64 , 9   -> `POWERPC_750
+  | `POWERPC64 , 10  -> `POWERPC_7400
+  | `POWERPC64 , 11  -> `POWERPC_7450
+  | `POWERPC64 , 100 -> `POWERPC_970
+  | `ARM       , 0   -> `ARM_ALL
+  | `ARM       , 5   -> `ARM_V4T
+  | `ARM       , 6   -> `ARM_V6
+  | _         , n    -> `Unknown n
 
-type file_type =
-  | OBJECT
-  | EXECUTE
-  | CORE
-  | PRELOAD
-  | DYLIB
-  | DYLINKER
-  | BUNDLE
-  | DYLIB_STUB
-  | DSYM
+type file_type = [
+  | `OBJECT
+  | `EXECUTE
+  | `CORE
+  | `PRELOAD
+  | `DYLIB
+  | `DYLINKER
+  | `BUNDLE
+  | `DYLIB_STUB
+  | `DSYM
+  | `Unknown of int
+]
 
 let file_type = function
-  | 0x1 -> OBJECT
-  | 0x2 -> EXECUTE
-  | 0x4 -> CORE
-  | 0x5 -> PRELOAD
-  | 0x6 -> DYLIB
-  | 0x7 -> DYLINKER
-  | 0x8 -> BUNDLE
-  | 0x9 -> DYLIB_STUB
-  | 0xA -> DSYM
-  | _ -> invalid_format "file_type"
+  | 0x1 -> `OBJECT
+  | 0x2 -> `EXECUTE
+  | 0x4 -> `CORE
+  | 0x5 -> `PRELOAD
+  | 0x6 -> `DYLIB
+  | 0x7 -> `DYLINKER
+  | 0x8 -> `BUNDLE
+  | 0x9 -> `DYLIB_STUB
+  | 0xA -> `DSYM
+  | n   -> `Unknown n
 
 type header_flag =
   (*  the object file has no undefined references *)
@@ -258,86 +264,88 @@ let read_header buf =
   size_of_cmds, {magic; cpu_type; cpu_subtype; file_type; flags}
 
 (* Platform-specific relocation types. *)
-type r_type =
-  | GENERIC_RELOC_VANILLA
-  | GENERIC_RELOC_PAIR
-  | GENERIC_RELOC_SECTDIFF
-  | GENERIC_RELOC_LOCAL_SECTDIFF
-  | GENERIC_RELOC_PB_LA_PTR
-  | X86_64_RELOC_BRANCH
-  | X86_64_RELOC_GOT_LOAD
-  | X86_64_RELOC_GOT
-  | X86_64_RELOC_SIGNED
-  | X86_64_RELOC_UNSIGNED
-  | X86_64_RELOC_SUBTRACTOR
-  | X86_64_RELOC_SIGNED_1
-  | X86_64_RELOC_SIGNED_2
-  | X86_64_RELOC_SIGNED_4
-  | PPC_RELOC_VANILLA
-  | PPC_RELOC_PAIR
-  | PPC_RELOC_BR14
-  | PPC_RELOC_BR24
-  | PPC_RELOC_HI16
-  | PPC_RELOC_LO16
-  | PPC_RELOC_HA16
-  | PPC_RELOC_LO14
-  | PPC_RELOC_SECTDIFF
-  | PPC_RELOC_LOCAL_SECTDIFF
-  | PPC_RELOC_PB_LA_PTR
-  | PPC_RELOC_HI16_SECTDIFF
-  | PPC_RELOC_LO16_SECTDIFF
-  | PPC_RELOC_HA16_SECTDIFF
-  | PPC_RELOC_JBSR
-  | PPC_RELOC_LO14_SECTDIFF
+type r_type = [
+  | `GENERIC_RELOC_VANILLA
+  | `GENERIC_RELOC_PAIR
+  | `GENERIC_RELOC_SECTDIFF
+  | `GENERIC_RELOC_LOCAL_SECTDIFF
+  | `GENERIC_RELOC_PB_LA_PTR
+  | `X86_64_RELOC_BRANCH
+  | `X86_64_RELOC_GOT_LOAD
+  | `X86_64_RELOC_GOT
+  | `X86_64_RELOC_SIGNED
+  | `X86_64_RELOC_UNSIGNED
+  | `X86_64_RELOC_SUBTRACTOR
+  | `X86_64_RELOC_SIGNED_1
+  | `X86_64_RELOC_SIGNED_2
+  | `X86_64_RELOC_SIGNED_4
+  | `PPC_RELOC_VANILLA
+  | `PPC_RELOC_PAIR
+  | `PPC_RELOC_BR14
+  | `PPC_RELOC_BR24
+  | `PPC_RELOC_HI16
+  | `PPC_RELOC_LO16
+  | `PPC_RELOC_HA16
+  | `PPC_RELOC_LO14
+  | `PPC_RELOC_SECTDIFF
+  | `PPC_RELOC_LOCAL_SECTDIFF
+  | `PPC_RELOC_PB_LA_PTR
+  | `PPC_RELOC_HI16_SECTDIFF
+  | `PPC_RELOC_LO16_SECTDIFF
+  | `PPC_RELOC_HA16_SECTDIFF
+  | `PPC_RELOC_JBSR
+  | `PPC_RELOC_LO14_SECTDIFF
+  | `Unknown of int
+]
 
 let r_type cpu_type n = match cpu_type, n with
-  | X86       , 00   -> GENERIC_RELOC_VANILLA
-  | X86       , 01   -> GENERIC_RELOC_PAIR
-  | X86       , 02   -> GENERIC_RELOC_SECTDIFF
-  | X86       , 03   -> GENERIC_RELOC_LOCAL_SECTDIFF
-  | X86       , 04   -> GENERIC_RELOC_PB_LA_PTR
-  | X86_64    , 00   -> X86_64_RELOC_UNSIGNED
-  | X86_64    , 01   -> X86_64_RELOC_SIGNED
-  | X86_64    , 02   -> X86_64_RELOC_BRANCH
-  | X86_64    , 03   -> X86_64_RELOC_GOT_LOAD
-  | X86_64    , 04   -> X86_64_RELOC_GOT
-  | X86_64    , 05   -> X86_64_RELOC_SUBTRACTOR
-  | X86_64    , 06   -> X86_64_RELOC_SIGNED_1
-  | X86_64    , 07   -> X86_64_RELOC_SIGNED_2
-  | X86_64    , 08   -> X86_64_RELOC_SIGNED_4
-  | POWERPC   , 00   -> PPC_RELOC_VANILLA
-  | POWERPC   , 01   -> PPC_RELOC_PAIR
-  | POWERPC   , 02   -> PPC_RELOC_BR14
-  | POWERPC   , 03   -> PPC_RELOC_BR24
-  | POWERPC   , 04   -> PPC_RELOC_HI16
-  | POWERPC   , 05   -> PPC_RELOC_LO16
-  | POWERPC   , 06   -> PPC_RELOC_HA16
-  | POWERPC   , 07   -> PPC_RELOC_LO14
-  | POWERPC   , 08   -> PPC_RELOC_SECTDIFF
-  | POWERPC   , 09   -> PPC_RELOC_PB_LA_PTR
-  | POWERPC   , 10   -> PPC_RELOC_HI16_SECTDIFF
-  | POWERPC   , 11   -> PPC_RELOC_LO16_SECTDIFF
-  | POWERPC   , 12   -> PPC_RELOC_HA16_SECTDIFF
-  | POWERPC   , 13   -> PPC_RELOC_JBSR
-  | POWERPC   , 14   -> PPC_RELOC_LO14_SECTDIFF
-  | POWERPC   , 15   -> PPC_RELOC_LOCAL_SECTDIFF
-  | POWERPC64 , 00   -> PPC_RELOC_VANILLA
-  | POWERPC64 , 01   -> PPC_RELOC_PAIR
-  | POWERPC64 , 02   -> PPC_RELOC_BR14
-  | POWERPC64 , 03   -> PPC_RELOC_BR24
-  | POWERPC64 , 04   -> PPC_RELOC_HI16
-  | POWERPC64 , 05   -> PPC_RELOC_LO16
-  | POWERPC64 , 06   -> PPC_RELOC_HA16
-  | POWERPC64 , 07   -> PPC_RELOC_LO14
-  | POWERPC64 , 08   -> PPC_RELOC_SECTDIFF
-  | POWERPC64 , 09   -> PPC_RELOC_PB_LA_PTR
-  | POWERPC64 , 10   -> PPC_RELOC_HI16_SECTDIFF
-  | POWERPC64 , 11   -> PPC_RELOC_LO16_SECTDIFF
-  | POWERPC64 , 12   -> PPC_RELOC_HA16_SECTDIFF
-  | POWERPC64 , 13   -> PPC_RELOC_JBSR
-  | POWERPC64 , 14   -> PPC_RELOC_LO14_SECTDIFF
-  | POWERPC64 , 15   -> PPC_RELOC_LOCAL_SECTDIFF
-  | _ -> invalid_format "r_type"
+  | `X86       , 00   -> `GENERIC_RELOC_VANILLA
+  | `X86       , 01   -> `GENERIC_RELOC_PAIR
+  | `X86       , 02   -> `GENERIC_RELOC_SECTDIFF
+  | `X86       , 03   -> `GENERIC_RELOC_LOCAL_SECTDIFF
+  | `X86       , 04   -> `GENERIC_RELOC_PB_LA_PTR
+  | `X86_64    , 00   -> `X86_64_RELOC_UNSIGNED
+  | `X86_64    , 01   -> `X86_64_RELOC_SIGNED
+  | `X86_64    , 02   -> `X86_64_RELOC_BRANCH
+  | `X86_64    , 03   -> `X86_64_RELOC_GOT_LOAD
+  | `X86_64    , 04   -> `X86_64_RELOC_GOT
+  | `X86_64    , 05   -> `X86_64_RELOC_SUBTRACTOR
+  | `X86_64    , 06   -> `X86_64_RELOC_SIGNED_1
+  | `X86_64    , 07   -> `X86_64_RELOC_SIGNED_2
+  | `X86_64    , 08   -> `X86_64_RELOC_SIGNED_4
+  | `POWERPC   , 00   -> `PPC_RELOC_VANILLA
+  | `POWERPC   , 01   -> `PPC_RELOC_PAIR
+  | `POWERPC   , 02   -> `PPC_RELOC_BR14
+  | `POWERPC   , 03   -> `PPC_RELOC_BR24
+  | `POWERPC   , 04   -> `PPC_RELOC_HI16
+  | `POWERPC   , 05   -> `PPC_RELOC_LO16
+  | `POWERPC   , 06   -> `PPC_RELOC_HA16
+  | `POWERPC   , 07   -> `PPC_RELOC_LO14
+  | `POWERPC   , 08   -> `PPC_RELOC_SECTDIFF
+  | `POWERPC   , 09   -> `PPC_RELOC_PB_LA_PTR
+  | `POWERPC   , 10   -> `PPC_RELOC_HI16_SECTDIFF
+  | `POWERPC   , 11   -> `PPC_RELOC_LO16_SECTDIFF
+  | `POWERPC   , 12   -> `PPC_RELOC_HA16_SECTDIFF
+  | `POWERPC   , 13   -> `PPC_RELOC_JBSR
+  | `POWERPC   , 14   -> `PPC_RELOC_LO14_SECTDIFF
+  | `POWERPC   , 15   -> `PPC_RELOC_LOCAL_SECTDIFF
+  | `POWERPC64 , 00   -> `PPC_RELOC_VANILLA
+  | `POWERPC64 , 01   -> `PPC_RELOC_PAIR
+  | `POWERPC64 , 02   -> `PPC_RELOC_BR14
+  | `POWERPC64 , 03   -> `PPC_RELOC_BR24
+  | `POWERPC64 , 04   -> `PPC_RELOC_HI16
+  | `POWERPC64 , 05   -> `PPC_RELOC_LO16
+  | `POWERPC64 , 06   -> `PPC_RELOC_HA16
+  | `POWERPC64 , 07   -> `PPC_RELOC_LO14
+  | `POWERPC64 , 08   -> `PPC_RELOC_SECTDIFF
+  | `POWERPC64 , 09   -> `PPC_RELOC_PB_LA_PTR
+  | `POWERPC64 , 10   -> `PPC_RELOC_HI16_SECTDIFF
+  | `POWERPC64 , 11   -> `PPC_RELOC_LO16_SECTDIFF
+  | `POWERPC64 , 12   -> `PPC_RELOC_HA16_SECTDIFF
+  | `POWERPC64 , 13   -> `PPC_RELOC_JBSR
+  | `POWERPC64 , 14   -> `PPC_RELOC_LO14_SECTDIFF
+  | `POWERPC64 , 15   -> `PPC_RELOC_LOCAL_SECTDIFF
+  | _         , n     -> `Unknown n
 
 type relocation_info = {
   (* offset from start of section to place to be relocated *)
@@ -381,78 +389,81 @@ let read_scattered_relocation_info t header address value = {
   rs_value   = value;
 }
 
-type relocation =
-  | Relocation_info of relocation_info
-  | Scattered_relocation_info of scattered_relocation_info
+type relocation = [
+  | `Relocation_info of relocation_info
+  | `Scattered_relocation_info of scattered_relocation_info
+]
 
 let read_relocation header t =
   let address = Read.u32 t in
   let value   = Read.u32 t in
   if (address land 0x80000000) = 0
-  then Relocation_info
+  then `Relocation_info
       (read_relocation_info t header address value)
-  else Scattered_relocation_info
+  else `Scattered_relocation_info
       (read_scattered_relocation_info t header address value)
 
-type sec_type =
+type sec_type = [
   (* regular section *)
-  | S_REGULAR
+  | `S_REGULAR
   (* zero fill on demand section *)
-  | S_ZEROFILL
+  | `S_ZEROFILL
   (* section with only literal C strings *)
-  | S_CSTRING_LITERALS
+  | `S_CSTRING_LITERALS
   (* section with only 4 byte literals *)
-  | S_4BYTE_LITERALS
+  | `S_4BYTE_LITERALS
   (* section with only 8 byte literals *)
-  | S_8BYTE_LITERALS
+  | `S_8BYTE_LITERALS
   (* section with only pointers to literals *)
-  | S_LITERAL_POINTERS
+  | `S_LITERAL_POINTERS
   (* section with only non-lazy symbol pointers *)
-  | S_NON_LAZY_SYMBOL_POINTERS
+  | `S_NON_LAZY_SYMBOL_POINTERS
   (* section with only lazy symbol pointers *)
-  | S_LAZY_SYMBOL_POINTERS
+  | `S_LAZY_SYMBOL_POINTERS
   (* section with only symbol stubs, bte size of stub in the reserved2 field *)
-  | S_SYMBOL_STUBS
+  | `S_SYMBOL_STUBS
   (* section with only function pointers for initialization *)
-  | S_MOD_INIT_FUNC_POINTERS
+  | `S_MOD_INIT_FUNC_POINTERS
   (* section with only function pointers for termination *)
-  | S_MOD_TERM_FUNC_POINTERS
+  | `S_MOD_TERM_FUNC_POINTERS
   (* section contains symbols that are to be coalesced *)
-  | S_COALESCED
+  | `S_COALESCED
   (* zero fill on demand section (that can be larger than 4 gigabytes) *)
-  | S_GB_ZEROFILL
+  | `S_GB_ZEROFILL
   (* section with only pairs of function pointers for interposing *)
-  | S_INTERPOSING
+  | `S_INTERPOSING
   (* section with only 16 byte literals *)
-  | S_16BYTE_LITERALS
+  | `S_16BYTE_LITERALS
   (* section contains DTrace Object Format *)
-  | S_DTRACE_DOF
+  | `S_DTRACE_DOF
   (* section with only lazy symbol pointers to lazy loaded dylibs *)
-  | S_LAZY_DYLIB_SYMBOL_POINTERS
+  | `S_LAZY_DYLIB_SYMBOL_POINTERS
+  | `Unknown of int
+]
 
 let sec_type flags = match flags land 0x000000ff with
-  | 0x00 -> S_REGULAR
-  | 0x01 -> S_ZEROFILL
-  | 0x02 -> S_CSTRING_LITERALS
-  | 0x03 -> S_4BYTE_LITERALS
-  | 0x04 -> S_8BYTE_LITERALS
-  | 0x05 -> S_LITERAL_POINTERS
-  | 0x06 -> S_NON_LAZY_SYMBOL_POINTERS
-  | 0x07 -> S_LAZY_SYMBOL_POINTERS
-  | 0x08 -> S_SYMBOL_STUBS
-  | 0x09 -> S_MOD_INIT_FUNC_POINTERS
-  | 0x0a -> S_MOD_TERM_FUNC_POINTERS
-  | 0x0b -> S_COALESCED
-  | 0x0c -> S_GB_ZEROFILL
-  | 0x0d -> S_INTERPOSING
-  | 0x0e -> S_16BYTE_LITERALS
-  | 0x0f -> S_DTRACE_DOF
-  | 0x10 -> S_LAZY_DYLIB_SYMBOL_POINTERS
-  | _ -> invalid_format "sec_type"
+  | 0x00 -> `S_REGULAR
+  | 0x01 -> `S_ZEROFILL
+  | 0x02 -> `S_CSTRING_LITERALS
+  | 0x03 -> `S_4BYTE_LITERALS
+  | 0x04 -> `S_8BYTE_LITERALS
+  | 0x05 -> `S_LITERAL_POINTERS
+  | 0x06 -> `S_NON_LAZY_SYMBOL_POINTERS
+  | 0x07 -> `S_LAZY_SYMBOL_POINTERS
+  | 0x08 -> `S_SYMBOL_STUBS
+  | 0x09 -> `S_MOD_INIT_FUNC_POINTERS
+  | 0x0a -> `S_MOD_TERM_FUNC_POINTERS
+  | 0x0b -> `S_COALESCED
+  | 0x0c -> `S_GB_ZEROFILL
+  | 0x0d -> `S_INTERPOSING
+  | 0x0e -> `S_16BYTE_LITERALS
+  | 0x0f -> `S_DTRACE_DOF
+  | 0x10 -> `S_LAZY_DYLIB_SYMBOL_POINTERS
+  | n    -> `Unknown n
 
-type sec_user_attr =
+type sec_user_attr = [
   (* section contains only true machine instructions *)
-  [ `PURE_INSTRUCTIONS
+  | `PURE_INSTRUCTIONS
   (* section contains coalesced symbols that are not to be in a ranlib table of contents *)
   | `NO_TOC
   (* ok to strip static symbols in this section in files with the MH_DYLDLINK flag *)
@@ -465,7 +476,7 @@ type sec_user_attr =
   | `SELF_MODIFYING_CODE
   (* a debug section *)
   | `DEBUG
-  ]
+]
 
 let sec_user_attr n = decode_flags n []
     [30, `PURE_INSTRUCTIONS;
@@ -475,14 +486,14 @@ let sec_user_attr n = decode_flags n []
      26, `LIVE_SUPPORT;
      25, `SELF_MODIFYING_CODE]
 
-type sec_sys_attr =
+type sec_sys_attr = [
   (* section contains soem machine instructions *)
-  [ `SOME_INSTRUCTIONS
+  | `SOME_INSTRUCTIONS
   (* section has external relocation entries *)
   | `EXT_RELOC
   (* section has local relocation entries *)
   | `LOC_RELOC
-  ]
+]
 
 let sec_sys_attr n = decode_flags n []
     [7, `LOC_RELOC;
@@ -515,10 +526,10 @@ type vm_prot = [ `READ | `WRITE | `EXECUTE ]
 let read_vm_prot t = decode_flags (Read.u32 t) []
     [0, `READ; 1, `WRITE; 2, `EXECUTE]
 
-type seg_flag =
-  [ `HIGHVM  (* The file contents for this segment is for the high part of the VM space, the low part is zero filled (for stacks in core files). *)
+type seg_flag = [
+  | `HIGHVM  (* The file contents for this segment is for the high part of the VM space, the low part is zero filled (for stacks in core files). *)
   | `NORELOC (* This segment has nothing that was relocated in it and nothing relocated to it, that is it may be safely replaced without relocation. *)
-  ]
+]
 
 let read_seg_flag t = decode_flags (Read.u32 t) []
     [0, `HIGHVM; 2, `NORELOC]
@@ -544,9 +555,9 @@ type segment = {
   seg_sections : section list;
 }
 
-type sym_type =
+type sym_type = [
   (* undefined symbol, n_sect is 0 *)
-  [ `UNDF
+  | `UNDF
   (* absolute symbol, does not need relocation, n_sect is 0 *)
   | `ABS
   (* symbol is defined in section n_sect *)
@@ -615,7 +626,8 @@ type sym_type =
   | `LENG
   (* stab global pascal symbol: name,,0,subtype,line *)
   | `PC
-  ]
+  | `Unknown of int
+]
 
 let sym_type = function
   | 0x00 -> `UNDF
@@ -653,11 +665,11 @@ let sym_type = function
   | 0xe8 -> `ECOML
   | 0xfe -> `LENG
   | 0x30 -> `PC
-  | _ -> invalid_format "sym_type"
+  | n    -> `Unknown n
 
-type reference_flag =
+type reference_flag = [
   (* reference to an external non-lazy symbol *)
-  [ `UNDEFINED_NON_LAZY
+  | `UNDEFINED_NON_LAZY
   (* reference to an external lazy symbol *)
   | `UNDEFINED_LAZY
   (* symbol is defined in this module *)
@@ -676,7 +688,8 @@ type reference_flag =
   | `SYM_WEAK_DEF
   (* for two-level mach-o objects, specifies the index of the library in which this symbol is defined. zero specifies current image. *)
   | `LIBRARY_ORDINAL of u16
-  ]
+  | `Unknown of int
+]
 
 let reference_flag_lo16 = function
   | 0 -> `UNDEFINED_NON_LAZY
@@ -685,7 +698,7 @@ let reference_flag_lo16 = function
   | 3 -> `PRIVATE_DEFINED
   | 4 -> `PRIVATE_UNDEFINED_NON_LAZY
   | 5 -> `PRIVATE_UNDEFINED_LAZY
-  | _ -> invalid_format "reference_flag_lo16"
+  | n -> `Unknown n
 
 let reference_flag_hi16 n = decode_flags n []
     [0, `REFERENCED_DYNAMICALLY;
@@ -803,56 +816,57 @@ let read_dylib_command t lc =
   { dylib_name; dylib_timestamp;
     dylib_current_version; dylib_compatibility_version }
 
-type command =
+type command = [
   (* segment of this file to be mapped *)
-  | LC_SEGMENT_32 of segment
+  | `LC_SEGMENT_32 of segment
   (* static link-edit symbol table and stab info *)
-  | LC_SYMTAB of symbol list * Owee_buf.t
+  | `LC_SYMTAB of symbol array * Owee_buf.t
   (* thread state information (list of (flavor, [long]) pairs) *)
-  | LC_THREAD of (u32 * u32 list) list
+  | `LC_THREAD of (u32 * u32 list) list
   (* unix thread state information (includes a stack) (list of (flavor, [long] pairs) *)
-  | LC_UNIXTHREAD of (u32 * u32 list) list
+  | `LC_UNIXTHREAD of (u32 * u32 list) list
   (* dynamic link-edit symbol table info *)
-  | LC_DYSYMTAB of dynamic_symbol_table
+  | `LC_DYSYMTAB of dynamic_symbol_table
   (* load a dynamically linked shared library (name, timestamp, current version, compatibility version) *)
-  | LC_LOAD_DYLIB of dylib
+  | `LC_LOAD_DYLIB of dylib
   (* dynamically linked shared lib ident (name, timestamp, current version, compatibility version) *)
-  | LC_ID_DYLIB of dylib
+  | `LC_ID_DYLIB of dylib
   (* load a dynamic linker (name of dynamic linker) *)
-  | LC_LOAD_DYLINKER of string
+  | `LC_LOAD_DYLINKER of string
   (* dynamic linker identification (name of dynamic linker) *)
-  | LC_ID_DYLINKER of string
+  | `LC_ID_DYLINKER of string
   (* modules prebound for a dynamically linked shared library (name, list of module indices) *)
-  | LC_PREBOUND_DYLIB of string * u8 list
+  | `LC_PREBOUND_DYLIB of string * u8 list
   (* image routines (virtual address of initialization routine, module index where it resides) *)
-  | LC_ROUTINES_32 of u32 * u32
+  | `LC_ROUTINES_32 of u32 * u32
   (* sub framework (name) *)
-  | LC_SUB_FRAMEWORK of string
+  | `LC_SUB_FRAMEWORK of string
   (* sub umbrella (name) *)
-  | LC_SUB_UMBRELLA of string
+  | `LC_SUB_UMBRELLA of string
   (* sub client (name) *)
-  | LC_SUB_CLIENT of string
+  | `LC_SUB_CLIENT of string
   (* sub library (name) *)
-  | LC_SUB_LIBRARY of string
+  | `LC_SUB_LIBRARY of string
   (* two-level namespace lookup hints (list of (subimage index, symbol table index) pairs *)
-  | LC_TWOLEVEL_HINTS of (u32 * u32) list
+  | `LC_TWOLEVEL_HINTS of (u32 * u32) list
   (* prebind checksum (checksum) *)
-  | LC_PREBIND_CKSUM of u32
+  | `LC_PREBIND_CKSUM of u32
   (* load a dynamically linked shared library that is allowed to be missing (symbols are weak imported) (name, timestamp, current version, compatibility version) *)
-  | LC_LOAD_WEAK_DYLIB of dylib
+  | `LC_LOAD_WEAK_DYLIB of dylib
   (* 64-bit segment of this file to mapped *)
-  | LC_SEGMENT_64 of segment
+  | `LC_SEGMENT_64 of segment
   (* 64-bit image routines (virtual address of initialization routine, module index where it resides) *)
-  | LC_ROUTINES_64 of u64 * u64
+  | `LC_ROUTINES_64 of u64 * u64
   (* the uuid for an image or its corresponding dsym file (8 element list of bytes) *)
-  | LC_UUID of string
+  | `LC_UUID of string
   (* runpath additions (path) *)
-  | LC_RPATH of string
+  | `LC_RPATH of string
   (* local of code signature *)
-  | LC_CODE_SIGNATURE of (u32 * u32)
+  | `LC_CODE_SIGNATURE of u32 * u32
   (* local of info to split segments *)
-  | LC_SEGMENT_SPLIT_INFO of (u32 * u32)
-  | LC_UNHANDLED of Owee_buf.t
+  | `LC_SEGMENT_SPLIT_INFO of u32 * u32
+  | `LC_UNHANDLED of int * Owee_buf.t
+]
 
 let read_twolevelhint t =
   let word = Read.u32 t in
@@ -862,7 +876,7 @@ let read_twolevelhint t =
 let read_twolevelhints buf t =
   let offset = Read.u32 t in
   let nhints = Read.u32 t in
-  LC_TWOLEVEL_HINTS
+  `LC_TWOLEVEL_HINTS
     (read_n_times read_twolevelhint (cursor buf ~at:offset) nhints)
 
 let rec read_thread t =
@@ -964,7 +978,7 @@ let read_dynamic_symbol_table header t buf =
   let nlocrel        = Read.u32 t in
   let locrels        =
     read_n_times (read_relocation header) (cursor buf ~at:locreloff) nlocrel in
-  LC_DYSYMTAB {
+  `LC_DYSYMTAB {
     localSyms    = (ilocalsym, nlocalsym);
     extDefSyms   = (iextdefsym, nextdefsym);
     undefSyms    = (iundefsym, nundefsym);
@@ -1021,7 +1035,7 @@ let read_segment_32 header buf t =
   let nsects   = Read.u32 t in
   let flags    = read_seg_flag t in
   let sects    = read_n_times (read_section_32 header buf) t nsects in
-  LC_SEGMENT_32 {
+  `LC_SEGMENT_32 {
     seg_segname = segname;
     seg_vmaddr  = vmaddr;
     seg_vmsize  = vmsize;
@@ -1074,7 +1088,7 @@ let read_segment_64 header buf t =
   let nsects   = Read.u32 t in
   let flags    = read_seg_flag t in
   let sects    = read_n_times (read_section_64 header buf) t nsects in
-  LC_SEGMENT_64 {
+  `LC_SEGMENT_64 {
     seg_segname = segname;
     seg_vmaddr  = vmaddr;
     seg_vmsize  = vmsize;
@@ -1095,7 +1109,7 @@ let read_routines_command_32 t =
   let _reserved4   = Read.u32 t in
   let _reserved5   = Read.u32 t in
   let _reserved6   = Read.u32 t in
-  LC_ROUTINES_32 (init_address, init_module)
+  `LC_ROUTINES_32 (init_address, init_module)
 
 let read_routines_command_64 t =
   let init_address = Read.u64 t in
@@ -1106,15 +1120,15 @@ let read_routines_command_64 t =
   let _reserved4   = Read.u64 t in
   let _reserved5   = Read.u64 t in
   let _reserved6   = Read.u64 t in
-  LC_ROUTINES_64 (init_address, init_module)
+  `LC_ROUTINES_64 (init_address, init_module)
 
 
 let read_uuid_command t =
-  LC_UUID (Read.fixed_string t 8)
+  `LC_UUID (Read.fixed_string t 8)
 
 let read_rpath_command buf t =
   let offset = Read.u32 t in
-  LC_RPATH (Read.zero_string "invalid rpath" (cursor buf ~at:offset) ())
+  `LC_RPATH (Read.zero_string "invalid rpath" (cursor buf ~at:offset) ())
 
 let read_link_edit t =
   let dataoff  = Read.u32 t in
@@ -1128,7 +1142,7 @@ let read_prebound_dylib buf t =
   let modules = read_n_times Read.u8 (cursor ~at:modulesoff buf)
       (nmodules / 8 + nmodules mod 8)
   in
-  LC_PREBOUND_DYLIB (name, modules)
+  `LC_PREBOUND_DYLIB (name, modules)
 
 let read_symbol read_value header buf t =
   let sym_name = read_symbol_name t buf in
@@ -1156,42 +1170,47 @@ let read_symbol_table header buf t =
   let nsyms   = Read.u32 t in
   let stroff  = Read.u32 t in
   let strsize = Read.u32 t in
+  Printf.eprintf "symoff: %d, nsyms: %d, stroff: %d, strsize: %d\n"
+    symoff nsyms stroff strsize;
+  Printf.eprintf "buffer size: %d\n%!"
+    (Bigarray.Array1.dim buf);
   let strsect = sub (cursor buf ~at:stroff) strsize in
-  seek strsect symoff;
   let read_symbol = read_symbol (if is64bit header then Read.u64 else Read.u32) in
-  let symbols = read_n_times (read_symbol header buf) strsect nsyms in
-  LC_SYMTAB (symbols, strsect.buffer)
+  let symcursor = cursor buf ~at:symoff in
+  let symbols = Array.init nsyms
+      (fun sym -> read_symbol header strsect.buffer symcursor) in
+  `LC_SYMTAB (symbols, strsect.buffer)
 
 let read_load_command header buf t =
   let cmd     = Read.u32 t in
   let cmdsize = Read.u32 t in
-  let t       = sub t (8 - cmdsize) in
+  let t       = sub t (cmdsize - 8) in
   match cmd with
   | 0x00000001 -> read_segment_32 header buf t
-  | 0x00000002 -> read_symbol_table header t.buffer t
-  | 0x00000004 -> LC_THREAD (read_thread t)
-  | 0x00000005 -> LC_UNIXTHREAD (read_thread t)
+  | 0x00000002 -> read_symbol_table header buf t
+  | 0x00000004 -> `LC_THREAD (read_thread t)
+  | 0x00000005 -> `LC_UNIXTHREAD (read_thread t)
   | 0x0000000b -> read_dynamic_symbol_table header t buf
-  | 0x0000000e -> LC_LOAD_DYLINKER (read_lc_string t.buffer t)
-  | 0x0000000f -> LC_ID_DYLINKER (read_lc_string t.buffer t)
+  | 0x0000000e -> `LC_LOAD_DYLINKER (read_lc_string t.buffer t)
+  | 0x0000000f -> `LC_ID_DYLINKER (read_lc_string t.buffer t)
   | 0x00000010 -> read_prebound_dylib t.buffer t
   | 0x00000011 -> read_routines_command_32 t
-  | 0x00000012 -> LC_SUB_FRAMEWORK (read_lc_string t.buffer t)
-  | 0x00000013 -> LC_SUB_UMBRELLA  (read_lc_string t.buffer t)
-  | 0x00000014 -> LC_SUB_CLIENT    (read_lc_string t.buffer t)
-  | 0x00000015 -> LC_SUB_LIBRARY   (read_lc_string t.buffer t)
+  | 0x00000012 -> `LC_SUB_FRAMEWORK (read_lc_string t.buffer t)
+  | 0x00000013 -> `LC_SUB_UMBRELLA  (read_lc_string t.buffer t)
+  | 0x00000014 -> `LC_SUB_CLIENT    (read_lc_string t.buffer t)
+  | 0x00000015 -> `LC_SUB_LIBRARY   (read_lc_string t.buffer t)
   | 0x00000016 -> read_twolevelhints t.buffer t
-  | 0x00000017 -> LC_PREBIND_CKSUM (Read.u32 t)
+  | 0x00000017 -> `LC_PREBIND_CKSUM (Read.u32 t)
   | 0x00000019 -> read_segment_64 header buf t
   | 0x0000001a -> read_routines_command_64 t
   | 0x0000001b -> read_uuid_command t
-  | 0x0000001d -> LC_CODE_SIGNATURE (read_link_edit t)
-  | 0x0000001e -> LC_SEGMENT_SPLIT_INFO (read_link_edit t)
-  | 0x0000000c -> LC_LOAD_DYLIB (read_dylib_command t t.buffer)
-  | 0x0000000d -> LC_ID_DYLIB (read_dylib_command t t.buffer)
-  | 0x80000018 -> LC_LOAD_WEAK_DYLIB (read_dylib_command t t.buffer)
+  | 0x0000001d -> `LC_CODE_SIGNATURE (read_link_edit t)
+  | 0x0000001e -> `LC_SEGMENT_SPLIT_INFO (read_link_edit t)
+  | 0x0000000c -> `LC_LOAD_DYLIB (read_dylib_command t t.buffer)
+  | 0x0000000d -> `LC_ID_DYLIB (read_dylib_command t t.buffer)
+  | 0x80000018 -> `LC_LOAD_WEAK_DYLIB (read_dylib_command t t.buffer)
   | 0x8000001c -> read_rpath_command buf t
-  | _ -> LC_UNHANDLED t.buffer
+  | n -> `LC_UNHANDLED (n, t.buffer)
 
 let rec read_load_commands header buf t =
   if at_end t then []
@@ -1199,14 +1218,12 @@ let rec read_load_commands header buf t =
     let lc = read_load_command header buf t in
     lc :: read_load_commands header buf t
 
-type t = {
-  header: header;
-  commands: command list;
-}
-
 let read buf =
   let t = cursor buf in
   let size_of_commands, header = read_header t in
   let t = sub t size_of_commands in
   let commands = read_load_commands header buf t  in
-  { header; commands }
+  (header, commands)
+
+let section_body buffer sec =
+  Bigarray.Array1.sub buffer sec.sec_addr sec.sec_size

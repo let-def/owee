@@ -26,6 +26,10 @@ DIST_FILES=               \
 	src/owee_location.ml    \
 	src/owee_location.cmi   \
 	src/owee_location.cmx   \
+	src/owee_macho.mli      \
+	src/owee_macho.ml       \
+	src/owee_macho.cmi      \
+	src/owee_macho.cmx      \
 	src/owee_marker.mli     \
 	src/owee_marker.ml      \
 	src/owee_marker.cmi     \

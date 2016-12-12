@@ -60,4 +60,6 @@ module Read : sig
       stopping at the first zero or when [maxlen] is reached, if it was provided. *)
   (* CR mshinwell: delete the first argument and return an option *)
   val zero_string : string -> cursor -> ?maxlen:int -> unit -> string
+
+  val buffer : cursor -> int -> t
 end

@@ -24,13 +24,21 @@ let magic = function
   | 0xCFFAEDFE -> CIGAM64
   | _ -> invalid_format "magic"
 
+let string_of_magic = function
+  | MAGIC32 -> "MAGIC32"
+  | MAGIC64 -> "MAGIC64"
+  | CIGAM32 -> "CIGAM32"
+  | CIGAM64 -> "CIGAM64"
+
+type unknown = [ `Unknown of int ]
+
 type cpu_type = [
   | `X86
   | `X86_64
   | `ARM
   | `POWERPC
   | `POWERPC64
-  | `Unknown of int
+  | unknown
 ]
 
 let cpu_type = function
@@ -86,7 +94,7 @@ type cpu_subtype = [
   | `ARM_ALL
   | `ARM_V4T
   | `ARM_V6
-  | `Unknown of int
+  | unknown
 ]
 
 let cpu_subtype ty tag = match ty, tag with
@@ -151,7 +159,7 @@ type file_type = [
   | `BUNDLE
   | `DYLIB_STUB
   | `DSYM
-  | `Unknown of int
+  | unknown
 ]
 
 let file_type = function
@@ -166,9 +174,9 @@ let file_type = function
   | 0xA -> `DSYM
   | n   -> `Unknown n
 
-type header_flag =
+type header_flag = [
   (*  the object file has no undefined references *)
-  [ `NOUNDEFS
+  | `NOUNDEFS
   (*  the object file is the output of an incremental link against a base file and can't be link edited again *)
   | `INCRLINK
   (*  the object file is input for the dynamic linker and can't be staticly link edited again *)
@@ -209,7 +217,7 @@ type header_flag =
   | `NO_REEXPORTED_DYLIBS
   (*  When this bit is set, the OS will load the main executable at a random address.  Only used in `EXECUTE filetypes. *)
   | `PIE
-  ]
+]
 
 type header = {
   magic       : magic;
@@ -264,7 +272,7 @@ let read_header buf =
   size_of_cmds, {magic; cpu_type; cpu_subtype; file_type; flags}
 
 (* Platform-specific relocation types. *)
-type r_type = [
+type reloc_type = [
   | `GENERIC_RELOC_VANILLA
   | `GENERIC_RELOC_PAIR
   | `GENERIC_RELOC_SECTDIFF
@@ -295,10 +303,10 @@ type r_type = [
   | `PPC_RELOC_HA16_SECTDIFF
   | `PPC_RELOC_JBSR
   | `PPC_RELOC_LO14_SECTDIFF
-  | `Unknown of int
+  | unknown
 ]
 
-let r_type cpu_type n = match cpu_type, n with
+let reloc_type cpu_type n = match cpu_type, n with
   | `X86       , 00   -> `GENERIC_RELOC_VANILLA
   | `X86       , 01   -> `GENERIC_RELOC_PAIR
   | `X86       , 02   -> `GENERIC_RELOC_SECTDIFF
@@ -359,7 +367,7 @@ type relocation_info = {
   (* indicates whether symbolnum is an index into the symbol table (True) or section table (False) *)
   ri_extern    : bool;
   (* relocation type *)
-  ri_type      : r_type;
+  ri_type      : reloc_type;
 }
 
 let bits ofs sz n = (n lsl (32 - ofs - sz)) lsr (32 - sz)
@@ -370,13 +378,13 @@ let read_relocation_info t header ri_address value = {
   ri_pcrel     = bits 24 1 value = 1;
   ri_length    = 1 lsl (bits 25 2 value);
   ri_extern    = bits 27 1 value = 1;
-  ri_type      = r_type header.cpu_type (bits 28 4 value);
+  ri_type      = reloc_type header.cpu_type (bits 28 4 value);
 }
 
 type scattered_relocation_info = {
   rs_pcrel   : bool;   (*  indicates if the item to be relocated is part of an instruction containing PC-relative addressing *)
   rs_length  : u32; (*  length of item containing address to be relocated (literal form (4) instead of power of two (2)) *)
-  rs_type    : r_type; (*  relocation type *)
+  rs_type    : reloc_type; (*  relocation type *)
   rs_address : u32; (*  offset from start of section to place to be relocated *)
   rs_value   : s32;  (*  address of the relocatable expression for the item in the file that needs to be updated if the address is changed *)
 }
@@ -384,7 +392,7 @@ type scattered_relocation_info = {
 let read_scattered_relocation_info t header address value = {
   rs_pcrel   = bits 1 1 address = 1;
   rs_length  = 1 lsl (bits 2 2 address);
-  rs_type    = r_type header.cpu_type (bits 4 4 address);
+  rs_type    = reloc_type header.cpu_type (bits 4 4 address);
   rs_address = bits 8 24 address;
   rs_value   = value;
 }
@@ -438,7 +446,7 @@ type sec_type = [
   | `S_DTRACE_DOF
   (* section with only lazy symbol pointers to lazy loaded dylibs *)
   | `S_LAZY_DYLIB_SYMBOL_POINTERS
-  | `Unknown of int
+  | unknown
 ]
 
 let sec_type flags = match flags land 0x000000ff with
@@ -512,7 +520,7 @@ type section = {
   (* alignment required by section (literal form, not power of two, e.g. 8 not 3) *)
   sec_align      : int;
   (* relocations for this section *)
-  sec_relocs     : relocation list;
+  sec_relocs     : relocation array;
   (* type of section *)
   sec_type       : sec_type;
   (* user attributes of section *)
@@ -552,7 +560,7 @@ type segment = {
   (* segment flags *)
   seg_flags    : seg_flag list;
   (* sections owned by this segment *)
-  seg_sections : section list;
+  seg_sections : section array;
 }
 
 type sym_type = [
@@ -626,7 +634,7 @@ type sym_type = [
   | `LENG
   (* stab global pascal symbol: name,,0,subtype,line *)
   | `PC
-  | `Unknown of int
+  | unknown
 ]
 
 let sym_type = function
@@ -688,7 +696,7 @@ type reference_flag = [
   | `SYM_WEAK_DEF
   (* for two-level mach-o objects, specifies the index of the library in which this symbol is defined. zero specifies current image. *)
   | `LIBRARY_ORDINAL of u16
-  | `Unknown of int
+  | unknown
 ]
 
 let reference_flag_lo16 = function
@@ -773,12 +781,8 @@ let read_toc t =
   let module_index = Read.u32 t in
   { symbol_index; module_index }
 
-let rec read_n_times f t = function
-  | 0 -> []
-  | n when n < 0 -> invalid_format "negative toc_entries"
-  | n ->
-    let toc = f t in
-    toc :: read_n_times f t (n - 1)
+let read_n_times f t n =
+  Array.init n (fun _ -> f t)
 
 type dynamic_symbol_table = {
   (*  symbol table index and count for local symbols *)
@@ -788,17 +792,17 @@ type dynamic_symbol_table = {
   (*  symbol table index and count for undefined symbols *)
   undefSyms    : u32 * u32;
   (*  list of symbol index and module index pairs *)
-  toc_entries  : toc_entry list;
+  toc_entries  : toc_entry array;
   (*  modules *)
-  modules      : dylib_module list;
+  modules      : dylib_module array;
   (*  list of external reference symbol indices *)
-  extRefSyms   : u32 list;
+  extRefSyms   : u32 array;
   (*  list of indirect symbol indices *)
-  indirectSyms : u32 list;
+  indirectSyms : u32 array;
   (*  external locations *)
-  extRels      : relocation list;
+  extRels      : relocation array;
   (*  local relocations *)
-  locRels      : relocation list;
+  locRels      : relocation array;
 }
 
 type dylib = {
@@ -816,57 +820,56 @@ let read_dylib_command t lc =
   { dylib_name; dylib_timestamp;
     dylib_current_version; dylib_compatibility_version }
 
-type command = [
+type command =
   (* segment of this file to be mapped *)
-  | `LC_SEGMENT_32 of segment
+  | LC_SEGMENT_32 of segment lazy_t
   (* static link-edit symbol table and stab info *)
-  | `LC_SYMTAB of symbol array * Owee_buf.t
+  | LC_SYMTAB of (symbol array * Owee_buf.t) lazy_t
   (* thread state information (list of (flavor, [long]) pairs) *)
-  | `LC_THREAD of (u32 * u32 list) list
+  | LC_THREAD of (u32 * u32 array) list lazy_t
   (* unix thread state information (includes a stack) (list of (flavor, [long] pairs) *)
-  | `LC_UNIXTHREAD of (u32 * u32 list) list
+  | LC_UNIXTHREAD of (u32 * u32 array) list lazy_t
   (* dynamic link-edit symbol table info *)
-  | `LC_DYSYMTAB of dynamic_symbol_table
+  | LC_DYSYMTAB of dynamic_symbol_table lazy_t
   (* load a dynamically linked shared library (name, timestamp, current version, compatibility version) *)
-  | `LC_LOAD_DYLIB of dylib
+  | LC_LOAD_DYLIB of dylib lazy_t
   (* dynamically linked shared lib ident (name, timestamp, current version, compatibility version) *)
-  | `LC_ID_DYLIB of dylib
+  | LC_ID_DYLIB of dylib lazy_t
   (* load a dynamic linker (name of dynamic linker) *)
-  | `LC_LOAD_DYLINKER of string
+  | LC_LOAD_DYLINKER of string
   (* dynamic linker identification (name of dynamic linker) *)
-  | `LC_ID_DYLINKER of string
+  | LC_ID_DYLINKER of string
   (* modules prebound for a dynamically linked shared library (name, list of module indices) *)
-  | `LC_PREBOUND_DYLIB of string * u8 list
+  | LC_PREBOUND_DYLIB of (string * u8 array) lazy_t
   (* image routines (virtual address of initialization routine, module index where it resides) *)
-  | `LC_ROUTINES_32 of u32 * u32
+  | LC_ROUTINES_32 of u32 * u32
   (* sub framework (name) *)
-  | `LC_SUB_FRAMEWORK of string
+  | LC_SUB_FRAMEWORK of string
   (* sub umbrella (name) *)
-  | `LC_SUB_UMBRELLA of string
+  | LC_SUB_UMBRELLA of string
   (* sub client (name) *)
-  | `LC_SUB_CLIENT of string
+  | LC_SUB_CLIENT of string
   (* sub library (name) *)
-  | `LC_SUB_LIBRARY of string
+  | LC_SUB_LIBRARY of string
   (* two-level namespace lookup hints (list of (subimage index, symbol table index) pairs *)
-  | `LC_TWOLEVEL_HINTS of (u32 * u32) list
+  | LC_TWOLEVEL_HINTS of ((u32 * u32) array) lazy_t
   (* prebind checksum (checksum) *)
-  | `LC_PREBIND_CKSUM of u32
+  | LC_PREBIND_CKSUM of u32
   (* load a dynamically linked shared library that is allowed to be missing (symbols are weak imported) (name, timestamp, current version, compatibility version) *)
-  | `LC_LOAD_WEAK_DYLIB of dylib
+  | LC_LOAD_WEAK_DYLIB of dylib lazy_t
   (* 64-bit segment of this file to mapped *)
-  | `LC_SEGMENT_64 of segment
+  | LC_SEGMENT_64 of segment lazy_t
   (* 64-bit image routines (virtual address of initialization routine, module index where it resides) *)
-  | `LC_ROUTINES_64 of u64 * u64
+  | LC_ROUTINES_64 of u64 * u64
   (* the uuid for an image or its corresponding dsym file (8 element list of bytes) *)
-  | `LC_UUID of string
+  | LC_UUID of string
   (* runpath additions (path) *)
-  | `LC_RPATH of string
+  | LC_RPATH of string
   (* local of code signature *)
-  | `LC_CODE_SIGNATURE of u32 * u32
+  | LC_CODE_SIGNATURE of u32 * u32
   (* local of info to split segments *)
-  | `LC_SEGMENT_SPLIT_INFO of u32 * u32
-  | `LC_UNHANDLED of int * Owee_buf.t
-]
+  | LC_SEGMENT_SPLIT_INFO of u32 * u32
+  | LC_UNHANDLED of int * Owee_buf.t
 
 let read_twolevelhint t =
   let word = Read.u32 t in
@@ -876,8 +879,7 @@ let read_twolevelhint t =
 let read_twolevelhints buf t =
   let offset = Read.u32 t in
   let nhints = Read.u32 t in
-  `LC_TWOLEVEL_HINTS
-    (read_n_times read_twolevelhint (cursor buf ~at:offset) nhints)
+  read_n_times read_twolevelhint (cursor buf ~at:offset) nhints
 
 let rec read_thread t =
   if at_end t then
@@ -978,7 +980,7 @@ let read_dynamic_symbol_table header t buf =
   let nlocrel        = Read.u32 t in
   let locrels        =
     read_n_times (read_relocation header) (cursor buf ~at:locreloff) nlocrel in
-  `LC_DYSYMTAB {
+  {
     localSyms    = (ilocalsym, nlocalsym);
     extDefSyms   = (iextdefsym, nextdefsym);
     undefSyms    = (iundefsym, nundefsym);
@@ -1035,7 +1037,7 @@ let read_segment_32 header buf t =
   let nsects   = Read.u32 t in
   let flags    = read_seg_flag t in
   let sects    = read_n_times (read_section_32 header buf) t nsects in
-  `LC_SEGMENT_32 {
+  {
     seg_segname = segname;
     seg_vmaddr  = vmaddr;
     seg_vmsize  = vmsize;
@@ -1088,7 +1090,7 @@ let read_segment_64 header buf t =
   let nsects   = Read.u32 t in
   let flags    = read_seg_flag t in
   let sects    = read_n_times (read_section_64 header buf) t nsects in
-  `LC_SEGMENT_64 {
+  {
     seg_segname = segname;
     seg_vmaddr  = vmaddr;
     seg_vmsize  = vmsize;
@@ -1109,7 +1111,7 @@ let read_routines_command_32 t =
   let _reserved4   = Read.u32 t in
   let _reserved5   = Read.u32 t in
   let _reserved6   = Read.u32 t in
-  `LC_ROUTINES_32 (init_address, init_module)
+  LC_ROUTINES_32 (init_address, init_module)
 
 let read_routines_command_64 t =
   let init_address = Read.u64 t in
@@ -1120,20 +1122,20 @@ let read_routines_command_64 t =
   let _reserved4   = Read.u64 t in
   let _reserved5   = Read.u64 t in
   let _reserved6   = Read.u64 t in
-  `LC_ROUTINES_64 (init_address, init_module)
+  LC_ROUTINES_64 (init_address, init_module)
 
 
 let read_uuid_command t =
-  `LC_UUID (Read.fixed_string t 8)
+  LC_UUID (Read.fixed_string t 8)
 
 let read_rpath_command buf t =
   let offset = Read.u32 t in
-  `LC_RPATH (Read.zero_string "invalid rpath" (cursor buf ~at:offset) ())
+  LC_RPATH (Read.zero_string "invalid rpath" (cursor buf ~at:offset) ())
 
-let read_link_edit t =
+let read_link_edit t k =
   let dataoff  = Read.u32 t in
   let datasize = Read.u32 t in
-  (dataoff, datasize)
+  k dataoff datasize
 
 let read_prebound_dylib buf t =
   let name = read_lc_string buf t in
@@ -1142,7 +1144,7 @@ let read_prebound_dylib buf t =
   let modules = read_n_times Read.u8 (cursor ~at:modulesoff buf)
       (nmodules / 8 + nmodules mod 8)
   in
-  `LC_PREBOUND_DYLIB (name, modules)
+  (name, modules)
 
 let read_symbol read_value header buf t =
   let sym_name = read_symbol_name t buf in
@@ -1177,40 +1179,39 @@ let read_symbol_table header buf t =
   let strsect = sub (cursor buf ~at:stroff) strsize in
   let read_symbol = read_symbol (if is64bit header then Read.u64 else Read.u32) in
   let symcursor = cursor buf ~at:symoff in
-  let symbols = Array.init nsyms
-      (fun sym -> read_symbol header strsect.buffer symcursor) in
-  `LC_SYMTAB (symbols, strsect.buffer)
+  let symbols = read_n_times (read_symbol header strsect.buffer) symcursor nsyms in
+  (symbols, strsect.buffer)
 
 let read_load_command header buf t =
   let cmd     = Read.u32 t in
   let cmdsize = Read.u32 t in
   let t       = sub t (cmdsize - 8) in
   match cmd with
-  | 0x00000001 -> read_segment_32 header buf t
-  | 0x00000002 -> read_symbol_table header buf t
-  | 0x00000004 -> `LC_THREAD (read_thread t)
-  | 0x00000005 -> `LC_UNIXTHREAD (read_thread t)
-  | 0x0000000b -> read_dynamic_symbol_table header t buf
-  | 0x0000000e -> `LC_LOAD_DYLINKER (read_lc_string t.buffer t)
-  | 0x0000000f -> `LC_ID_DYLINKER (read_lc_string t.buffer t)
-  | 0x00000010 -> read_prebound_dylib t.buffer t
+  | 0x00000001 -> LC_SEGMENT_32 (lazy (read_segment_32 header buf t))
+  | 0x00000002 -> LC_SYMTAB (lazy (read_symbol_table header buf t))
+  | 0x00000004 -> LC_THREAD (lazy (read_thread t))
+  | 0x00000005 -> LC_UNIXTHREAD (lazy (read_thread t))
+  | 0x0000000b -> LC_DYSYMTAB (lazy (read_dynamic_symbol_table header t buf))
+  | 0x0000000e -> LC_LOAD_DYLINKER (read_lc_string t.buffer t)
+  | 0x0000000f -> LC_ID_DYLINKER (read_lc_string t.buffer t)
+  | 0x00000010 -> LC_PREBOUND_DYLIB (lazy (read_prebound_dylib t.buffer t))
   | 0x00000011 -> read_routines_command_32 t
-  | 0x00000012 -> `LC_SUB_FRAMEWORK (read_lc_string t.buffer t)
-  | 0x00000013 -> `LC_SUB_UMBRELLA  (read_lc_string t.buffer t)
-  | 0x00000014 -> `LC_SUB_CLIENT    (read_lc_string t.buffer t)
-  | 0x00000015 -> `LC_SUB_LIBRARY   (read_lc_string t.buffer t)
-  | 0x00000016 -> read_twolevelhints t.buffer t
-  | 0x00000017 -> `LC_PREBIND_CKSUM (Read.u32 t)
-  | 0x00000019 -> read_segment_64 header buf t
+  | 0x00000012 -> LC_SUB_FRAMEWORK (read_lc_string t.buffer t)
+  | 0x00000013 -> LC_SUB_UMBRELLA  (read_lc_string t.buffer t)
+  | 0x00000014 -> LC_SUB_CLIENT    (read_lc_string t.buffer t)
+  | 0x00000015 -> LC_SUB_LIBRARY   (read_lc_string t.buffer t)
+  | 0x00000016 -> LC_TWOLEVEL_HINTS (lazy (read_twolevelhints t.buffer t))
+  | 0x00000017 -> LC_PREBIND_CKSUM (Read.u32 t)
+  | 0x00000019 -> LC_SEGMENT_64 (lazy (read_segment_64 header buf t))
   | 0x0000001a -> read_routines_command_64 t
   | 0x0000001b -> read_uuid_command t
-  | 0x0000001d -> `LC_CODE_SIGNATURE (read_link_edit t)
-  | 0x0000001e -> `LC_SEGMENT_SPLIT_INFO (read_link_edit t)
-  | 0x0000000c -> `LC_LOAD_DYLIB (read_dylib_command t t.buffer)
-  | 0x0000000d -> `LC_ID_DYLIB (read_dylib_command t t.buffer)
-  | 0x80000018 -> `LC_LOAD_WEAK_DYLIB (read_dylib_command t t.buffer)
+  | 0x0000001d -> read_link_edit t (fun a b -> LC_CODE_SIGNATURE (a,b))
+  | 0x0000001e -> read_link_edit t (fun a b -> LC_SEGMENT_SPLIT_INFO (a,b))
+  | 0x0000000c -> LC_LOAD_DYLIB (lazy (read_dylib_command t t.buffer))
+  | 0x0000000d -> LC_ID_DYLIB (lazy (read_dylib_command t t.buffer))
+  | 0x80000018 -> LC_LOAD_WEAK_DYLIB (lazy (read_dylib_command t t.buffer))
   | 0x8000001c -> read_rpath_command buf t
-  | n -> `LC_UNHANDLED (n, t.buffer)
+  | n -> LC_UNHANDLED (n, t.buffer)
 
 let rec read_load_commands header buf t =
   if at_end t then []
@@ -1225,5 +1226,5 @@ let read buf =
   let commands = read_load_commands header buf t  in
   (header, commands)
 
-let section_body buffer sec =
-  Bigarray.Array1.sub buffer sec.sec_addr sec.sec_size
+let section_body buffer seg sec =
+  Bigarray.Array1.sub buffer (seg.seg_fileoff + sec.sec_addr) sec.sec_size

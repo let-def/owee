@@ -27,11 +27,6 @@ let ensure t count msg =
 
 let advance t count = t.position <- t.position + count
 
-let sub t length =
-  let result = cursor (Bigarray.Array1.sub t.buffer t.position length) in
-  advance t length;
-  result
-
 let at_end t = dim t.buffer = t.position
 
 type s8  = int
@@ -136,4 +131,12 @@ module Read = struct
     let result = fixed_string t length in
     advance t 1;
     result
+
+  let buffer t length =
+    let result = Bigarray.Array1.sub t.buffer t.position length in
+    advance t length;
+    result
 end
+
+let sub t length =
+  cursor (Read.buffer t length)

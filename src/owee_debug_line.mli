@@ -10,7 +10,9 @@ type header
 *)
 val read_chunk : cursor -> (header * cursor) option
 
-(** State of the linenumber automaton *)
+(** State of the linenumber automaton.
+    IMPORTANT: this state is mutable!
+    A value of this type can change as the file is scanned. *)
 type state = {
   mutable address        : int;
   mutable filename       : string;
@@ -38,3 +40,6 @@ val get_filename : header -> state -> string option
     initial state [init]. *)
 val fold_rows : header * cursor ->
   (header -> state -> 'a -> 'a) -> 'a -> 'a
+
+(** [copy state] returns a copy of the mutable state *)
+val copy : state -> state

@@ -239,3 +239,18 @@ let rec fold_rows header section state f acc =
 
 let fold_rows (header,section) f acc =
   fold_rows header section (initial_state header) f acc
+
+let copy state =
+  { address = state.address;
+    filename = state.filename;
+    file = state.file;
+    line = state.line;
+    col = state.col;
+    is_statement = state.is_statement;
+    basic_block = state.basic_block;
+    end_sequence = state.end_sequence;
+    prologue_end = state.prologue_end;
+    epilogue_begin = state.epilogue_begin;
+    isa = state.isa;
+    discriminator = state.discriminator;
+  }

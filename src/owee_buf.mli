@@ -3,26 +3,24 @@
 type t =
   (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
 
+(* Size of buffer remains int, because the size (aka dim) of
+   Bigarray.Array1 is int, not int64. It should be enough in practice,
+   as we will not be able to manipulate larger binaries anyway. *)
 (** Size of the buffer *)
-(* CR mshinwell: rename to "size" *)
-val dim     : t -> int
+val size     : t -> int
 
 (** Minimal support for error reporting. FIXME: Improve that someday. *)
 exception Invalid_format of string
 val invalid_format : string -> 'a
 val assert_format : bool -> string -> unit
 
-(* Some aliases to make more explicit the nature of values being read ...
-   FIXME: As a first approximation, all values are expected to fit in OCaml
-   integers.
-*)
+(* Some aliases to make more explicit the nature of values being read. *)
 type s8   = int
 type u8   = int
 type u16  = int
 type s32  = int
 type u32  = int
-(* CR mshinwell: u64 should be Int64.t *)
-type u64  = int (* Bye bye 32 bits. 63 bits ought to be enough for anyone. *)
+type u64  = int64
 type s128 = int (* Ahem, we don't expect 128 bits to really consume 128 bits *)
 type u128 = int
 

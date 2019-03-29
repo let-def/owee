@@ -921,7 +921,7 @@ let read_module_32 t =
     dylib_init                  = (iinit, ninit);
     dylib_term                  = (iterm, nterm);
     dylib_objc_module_info_addr = objc_module_info_addr;
-    dylib_objc_module_info_size = objc_module_info_size;
+    dylib_objc_module_info_size = Int64.of_int objc_module_info_size;
   }
 
 let read_module_64 t =
@@ -1021,8 +1021,8 @@ let read_section_32 header buf t =
   {
     sec_sectname   = sectname;
     sec_segname    = segname;
-    sec_addr       = addr;
-    sec_size       = size;
+    sec_addr       = Int64.of_int addr;
+    sec_size       = Int64.of_int size;
     sec_align      = align;
     sec_relocs     = relocs;
     sec_type       = sec_type;
@@ -1043,10 +1043,10 @@ let read_segment_32 header buf t =
   let sects    = read_n_times (read_section_32 header buf) t nsects in
   {
     seg_segname = segname;
-    seg_vmaddr  = vmaddr;
-    seg_vmsize  = vmsize;
-    seg_fileoff = fileoff;
-    seg_filesize = filesize;
+    seg_vmaddr  = Int64.of_int vmaddr;
+    seg_vmsize  = Int64.of_int vmsize;
+    seg_fileoff = Int64.of_int fileoff;
+    seg_filesize = Int64.of_int filesize;
     seg_maxprot  = maxprot;
     seg_initprot = initprot;
     seg_flags    = flags;
@@ -1183,7 +1183,10 @@ let read_symbol_table header buf t =
   Printf.eprintf "buffer size: %d\n%!"
     (Bigarray.Array1.dim buf);
   let strsect = sub (cursor buf ~at:stroff) strsize in
-  let read_symbol = read_symbol (if is64bit header then Read.u64 else Read.u32) in
+  let f =
+    if is64bit header then Read.u64
+    else (fun x -> Int64.of_int (Read.u32 x)) in
+  let read_symbol = read_symbol f in
   let symcursor = cursor buf ~at:symoff in
   let symbols = read_n_times (read_symbol header strsect.buffer) symcursor nsyms in
   (symbols, strsect.buffer)
@@ -1233,4 +1236,5 @@ let read buf =
   (header, commands)
 
 let section_body buffer seg sec =
-  Bigarray.Array1.sub buffer (seg.seg_fileoff + sec.sec_addr) sec.sec_size
+  let addr = Int64.add seg.seg_fileoff sec.sec_addr in
+  Bigarray.Array1.sub buffer  (Int64.to_int addr) (Int64.to_int sec.sec_size)

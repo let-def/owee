@@ -1,4 +1,4 @@
-let dim = Bigarray.Array1.dim
+let size = Bigarray.Array1.dim
 
 type t =
   (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t
@@ -22,19 +22,21 @@ let seek t position =
   t.position <- position
 
 let ensure t count msg =
-  if t.position + count > dim t.buffer then
+  (* Ensure position does not overflow before checking for buffer overflow. *)
+  let new_pos = t.position + count in
+  if (new_pos < 0) || (size t.buffer < new_pos) then
     invalid_format msg
 
 let advance t count = t.position <- t.position + count
 
-let at_end t = dim t.buffer = t.position
+let at_end t = size t.buffer = t.position
 
 type s8  = int
 type u8  = int
 type u16 = int
 type s32 = int
 type u32 = int
-type u64 = int
+type u64 = int64
 type s128 = int
 type u128 = int
 
@@ -69,14 +71,18 @@ module Read = struct
   let u32be = u32
 
   let u64 t : u64 =
-    let result = t.buffer.{t.position}
-                 lor t.buffer.{t.position + 1} lsl 8
-                 lor t.buffer.{t.position + 2} lsl 16
-                 lor t.buffer.{t.position + 3} lsl 24
-                 lor t.buffer.{t.position + 4} lsl 32
-                 lor t.buffer.{t.position + 5} lsl 40
-                 lor t.buffer.{t.position + 6} lsl 48
-                 lor t.buffer.{t.position + 7} lsl 56
+    let result = List.fold_left
+                   (fun acc n -> Int64.logor acc (Int64.of_int n))
+                   0L
+                   [ t.buffer.{t.position};
+                     t.buffer.{t.position + 1} lsl 8;
+                     t.buffer.{t.position + 2} lsl 16;
+                     t.buffer.{t.position + 3} lsl 24;
+                     t.buffer.{t.position + 4} lsl 32;
+                     t.buffer.{t.position + 5} lsl 40;
+                     t.buffer.{t.position + 6} lsl 48;
+                     t.buffer.{t.position + 7} lsl 56
+                   ]
     in
     advance t 8;
     result
@@ -124,7 +130,7 @@ module Read = struct
 
   let zero_string t ?maxlen () =
     let maxlen = match maxlen with
-      | None -> dim t.buffer - t.position
+      | None -> size t.buffer - t.position
       | Some maxlen -> maxlen
     in
     match scan_0 t.buffer t.position maxlen 0 with

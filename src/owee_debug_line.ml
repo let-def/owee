@@ -48,8 +48,8 @@ let read_header t =
   let total_length = Read.u32 t in
   let is_64bit     = total_length = 0xFFFF_FFFF in
   let total_length =
-    if is_64bit then Read.u64 t else total_length in
-  let chunk = sub t total_length in
+    if is_64bit then Read.u64 t else Int64.of_int (total_length) in
+  let chunk = sub t (Int64.to_int total_length) in
   let version = Read.u16 chunk in
   assert_format (version >= 2 && version <= 4)
     "unknown .debug_line version";
@@ -208,7 +208,7 @@ let step header section state f acc =
         acc
       | 2 (* DW_LNE_set_address *) ->
         (* FIXME: target dependent *)
-        state.address <- Read.u64 section;
+        state.address <- Int64.to_int (Read.u64 section);
         acc
       | 3 (* DW_LNE_define_file *) ->
         state.filename <- read_filename section;
@@ -225,7 +225,8 @@ let step header section state f acc =
     let opcode = opcode - header.opcode_base in
     let addr_adv = opcode / header.line_range in
     let line_adv = opcode mod header.line_range in
-    state.address <- state.address + addr_adv * header.minimum_instruction_length;
+    let step = addr_adv * header.minimum_instruction_length in
+    state.address <- state.address + step;
     state.line    <- state.line    + line_adv + header.line_base;
     flush_row header state f acc
 

@@ -6,10 +6,10 @@ bug-reports: "https://github.com/let-def/owee"
 license: "MIT"
 dev-repo: "https://github.com/let-def/owee.git"
 build: [
-  ["jbuilder" "subst" "-n" name] {pinned}
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
-  "jbuilder" {build}
+  "dune" {build & >= "1.0"}
 ]
 available: [ocaml-version >= "4.02"]

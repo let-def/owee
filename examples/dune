@@ -1,0 +1,7 @@
+(executables
+ (names decodedline_elf decodedline_macho functions)
+ (libraries owee unix))
+
+(alias
+ (name examples)
+ (deps decodedline_elf.exe decodedline_macho.exe))

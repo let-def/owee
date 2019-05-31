@@ -9,8 +9,10 @@ let myself = lazy begin
   let path = "/proc/" ^ string_of_int pid ^ "/exe" in
   let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
   let len = Unix.lseek fd 0 Unix.SEEK_END in
-  let map = Bigarray.Array1.map_file fd
-      Bigarray.int8_unsigned Bigarray.c_layout false len in
+  let map =
+    Bigarray.array1_of_genarray
+      (Unix.map_file fd Bigarray.int8_unsigned
+         Bigarray.c_layout false [|len|]) in
   Unix.close fd;
   map
 end

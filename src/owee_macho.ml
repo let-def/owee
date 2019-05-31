@@ -372,7 +372,7 @@ type relocation_info = {
 
 let bits ofs sz n = (n lsl (32 - ofs - sz)) lsr (32 - sz)
 
-let read_relocation_info t header ri_address value = {
+let read_relocation_info _t header ri_address value = {
   ri_address;
   ri_symbolnum = bits 0 24 value;
   ri_pcrel     = bits 24 1 value = 1;
@@ -389,7 +389,7 @@ type scattered_relocation_info = {
   rs_value   : s32;  (*  address of the relocatable expression for the item in the file that needs to be updated if the address is changed *)
 }
 
-let read_scattered_relocation_info t header address value = {
+let read_scattered_relocation_info _t header address value = {
   rs_pcrel   = bits 1 1 address = 1;
   rs_length  = 1 lsl (bits 2 2 address);
   rs_type    = reloc_type header.cpu_type (bits 4 4 address);

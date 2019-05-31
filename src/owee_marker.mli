@@ -31,22 +31,22 @@
 type 'result service = ..
 
 type _ service +=
-   | (** A user-friendly label for your object / class of objects *)
-     Name : string service
-   | (** Run a fold functions on object leafs, useful to traverse structure
-         which are partially opaque. *)
-     Traverse : ((Obj.t -> 'acc -> 'acc) -> 'acc -> 'acc) service
-   | (** Return a list of locations relevant to the object *)
-     Locate : Owee_location.t list service
+   | Name : string service
+   (** A user-friendly label for your object / class of objects *)
+   | Traverse : ((Obj.t -> 'acc -> 'acc) -> 'acc -> 'acc) service
+   (** Run a fold functions on object leafs, useful to traverse structure
+       which are partially opaque. *)
+   | Locate : Owee_location.t list service
+   (** Return a list of locations relevant to the object *)
 
 (** Possible outcomes for the execution of a service *)
 type 'a service_result =
-  | (** Object implements the service, here is your answer *)
-    Success of 'a
-  | (** Service is not supported / unknown, but object is marked *)
-    Unsupported_service
-  | (** No marker has been found on the object, you can't run any query on it *)
-    Unmanaged_object
+  | Success of 'a
+  (** Object implements the service, here is your answer *)
+  | Unsupported_service
+  (** Service is not supported / unknown, but object is marked *)
+  | Unmanaged_object
+  (** No marker has been found on the object, you can't run any query on it *)
 
 (** {1 Manipulating objects}
 

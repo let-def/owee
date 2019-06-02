@@ -1,15 +1,21 @@
-opam-version: "1.2"
+opam-version: "2.0"
 maintainer: "Frédéric Bour <frederic.bour@lakaban.net>"
 authors: "Frédéric Bour <frederic.bour@lakaban.net>"
 homepage: "https://github.com/let-def/owee"
 bug-reports: "https://github.com/let-def/owee"
 license: "MIT"
-dev-repo: "https://github.com/let-def/owee.git"
+dev-repo: "git+https://github.com/let-def/owee.git"
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
+  "ocaml" {>= "4.06"}
   "dune" {build & >= "1.0"}
 ]
-available: [ocaml-version >= "4.06"]
+synopsis: "OCaml library to work with DWARF format"
+description: """
+Owee is an experimental library to work with DWARF format.
+It can parse ELF binaries and interpret DWARF debugline programs.
+
+It can also be used to find locations of functions from the current process."""

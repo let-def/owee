@@ -9,7 +9,9 @@ let rec decode_flags n acc = function
 
 let read_lc_string buf t =
   let offset = Read.u32 t in
-  Read.zero_string "invalid lc_string" (cursor buf ~at:offset) ()
+  match Read.zero_string (cursor buf ~at:offset) () with
+  | None -> invalid_format "invalid lc_string"
+  | Some s -> s
 
 type magic =
   | MAGIC32
@@ -748,7 +750,9 @@ type symbol = {
 
 let read_symbol_name t buf =
   let offset = Read.u32 t in
-  Read.zero_string "invalid symbol name" (cursor buf ~at:offset) ()
+  match Read.zero_string (cursor buf ~at:offset) () with
+  | None -> invalid_format "invalid symbol name"
+  | Some s -> s
 
 type dylib_module = {
   (*  module name string table offset *)
@@ -1130,7 +1134,9 @@ let read_uuid_command t =
 
 let read_rpath_command buf t =
   let offset = Read.u32 t in
-  LC_RPATH (Read.zero_string "invalid rpath" (cursor buf ~at:offset) ())
+  match Read.zero_string (cursor buf ~at:offset) () with
+  | None -> invalid_format "invalid rpath"
+  | Some s -> LC_RPATH s
 
 let read_link_edit t k =
   let dataoff  = Read.u32 t in

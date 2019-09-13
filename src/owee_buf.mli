@@ -56,10 +56,9 @@ module Read : sig
   (** [fixed_string t len] reads a string of exactly [len] bytes from [t] *)
   val fixed_string : cursor -> int -> string
 
-  (** [zero_string msg t ?maxlen ()] reads a zero-terminated string from [t],
+  (** [zero_string t ?maxlen ()] reads a zero-terminated string from [t],
       stopping at the first zero or when [maxlen] is reached, if it was provided. *)
-  (* CR mshinwell: delete the first argument and return an option *)
-  val zero_string : string -> cursor -> ?maxlen:int -> unit -> string
+  val zero_string : cursor -> ?maxlen:int -> unit -> string option
 
   val buffer : cursor -> int -> t
 end

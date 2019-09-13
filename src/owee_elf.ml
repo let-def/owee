@@ -121,8 +121,9 @@ let read_section header t n =
 let read_section_name shstrndx t shdr =
   let n = shdr.sh_name in
   seek t (shstrndx.sh_offset + n);
-  Read.zero_string "Unterminated section name" t
-    ~maxlen:(shstrndx.sh_size - n) ()
+  match Read.zero_string t ~maxlen:(shstrndx.sh_size - n) () with
+  | None -> invalid_format "Unterminated section name"
+  | Some s -> s
 
 let read_sections header t =
   let sections = Array.init header.e_shnum (read_section header t) in
@@ -165,7 +166,7 @@ module String_table = struct
       None
     else
       let cursor = Owee_buf.cursor t ~at:index in
-      Some (Owee_buf.Read.zero_string "boo!" cursor ())
+      Owee_buf.Read.zero_string cursor ()
 end
 
 let find_string_table buf sections =

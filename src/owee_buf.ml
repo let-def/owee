@@ -114,23 +114,25 @@ module Read = struct
     advance t length;
     Bytes.unsafe_to_string result
 
-  let rec scan_0 msg (b : t) ofs l i =
+  let rec scan_0 (b : t) ofs l i =
     if i >= l then
-      invalid_format msg
+      None
     else if b.{ofs + i} = 0 then
-      i
+      Some i
     else
-      scan_0 msg b ofs l (i + 1)
+      scan_0 b ofs l (i + 1)
 
-  let zero_string msg t ?maxlen () =
+  let zero_string t ?maxlen () =
     let maxlen = match maxlen with
       | None -> dim t.buffer - t.position
       | Some maxlen -> maxlen
     in
-    let length = scan_0 msg t.buffer t.position maxlen 0 in
-    let result = fixed_string t length in
-    advance t 1;
-    result
+    match scan_0 t.buffer t.position maxlen 0 with
+    | None -> None
+    | Some length ->
+      let result = fixed_string t length in
+      advance t 1;
+      Some result
 
   let buffer t length =
     let result = Bigarray.Array1.sub t.buffer t.position length in

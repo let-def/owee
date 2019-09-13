@@ -15,20 +15,26 @@ type header = {
 }
 
 let read_filename t =
-  match Read.zero_string "Unterminated filename" t () with
-  | "" -> ""
-  | fname ->
-    let _dir  = Read.uleb128 t in
-    let _time = Read.uleb128 t in
-    let _len  = Read.uleb128 t in
-    fname
+  match Read.zero_string t () with
+  | None -> invalid_format "Unterminated filename"
+  | Some s ->
+    match s with
+    | "" -> ""
+    | fname ->
+      let _dir  = Read.uleb128 t in
+      let _time = Read.uleb128 t in
+      let _len  = Read.uleb128 t in
+      fname
 
 let rec skip_directories t =
-  match Read.zero_string "Unterminated directory list" t () with
-  | "" -> ()
-  | _dir ->
-    (*print_endline _dir;*)
-    skip_directories t
+  match Read.zero_string t () with
+  | None -> invalid_format "Unterminated directory list"
+  | Some s ->
+    match s with
+    | "" -> ()
+    | _dir ->
+      (*print_endline _dir;*)
+      skip_directories t
 
 let rec read_filenames acc t = match read_filename t with
   | "" -> Array.of_list (List.rev acc)

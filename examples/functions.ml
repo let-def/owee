@@ -15,10 +15,11 @@ let path, address =
 let buffer =
   let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
   let len = Unix.lseek fd 0 Unix.SEEK_END in
-  let map = Bigarray.Array1.map_file fd
-      Bigarray.int8_unsigned Bigarray.c_layout false len in
+  let map = Unix.map_file
+      fd Bigarray.int8_unsigned Bigarray.c_layout false [|len|]
+  in
   Unix.close fd;
-  map
+  Bigarray.array1_of_genarray map
 
 let _header, sections = Owee_elf.read_elf buffer
 

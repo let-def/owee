@@ -310,11 +310,6 @@ module Symbol_table = struct
 end
 
 let find_symbol_table buf sections =
-  let dynsym = find_section_body buf sections ~section_name:".dynsym" in
-  let symtab = find_section_body buf sections ~section_name:".symtab" in
-  match dynsym, symtab with
-  | None, None -> None
-  | Some dynsym, None -> Some (Symbol_table.create [dynsym])
-  | None, Some symtab -> Some (Symbol_table.create [symtab])
-  | Some dynsym, Some symtab ->
-    Some (Symbol_table.create [dynsym; symtab])
+  match find_section_body buf sections ~section_name:".symtab" with
+  | None -> None
+  | Some symtab -> Some (Symbol_table.create [symtab])

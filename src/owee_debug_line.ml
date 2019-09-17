@@ -105,7 +105,7 @@ let initial_state header = {
   discriminator  = 0;
 }
 
-(*let reset_state state header =
+let reset_state state header =
   state.address        <- 0;
   state.filename       <- "";
   state.file           <- 1;
@@ -117,7 +117,7 @@ let initial_state header = {
   state.prologue_end   <- false;
   state.epilogue_begin <- false;
   state.isa            <- 0;
-  state.discriminator  <- 0*)
+  state.discriminator  <- 0
 
 let get_filename header {file; filename; _} =
   if file <= 0 then
@@ -197,7 +197,9 @@ let step header section state f acc =
       (*| n when (Printf.eprintf "eopcode:%d\n%!" n; false) -> assert false*)
       | 1 (* DW_LNE_end_sequence *) ->
         state.end_sequence <- true;
-        flush_row header state f acc
+        let acc = flush_row header state f acc in
+        reset_state state header;
+        acc
       | 2 (* DW_LNE_set_address *) ->
         (* FIXME: target dependent *)
         state.address <- Read.u64 section;

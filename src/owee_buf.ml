@@ -71,21 +71,14 @@ module Read = struct
   let u32be = u32
 
   let u64 t : u64 =
-    let result = List.fold_left
-                   (fun acc n -> Int64.logor acc (Int64.of_int n))
-                   0L
-                   [ t.buffer.{t.position};
-                     t.buffer.{t.position + 1} lsl 8;
-                     t.buffer.{t.position + 2} lsl 16;
-                     t.buffer.{t.position + 3} lsl 24;
-                     t.buffer.{t.position + 4} lsl 32;
-                     t.buffer.{t.position + 5} lsl 40;
-                     t.buffer.{t.position + 6} lsl 48;
-                     t.buffer.{t.position + 7} lsl 56
-                   ]
-    in
+    let result = ref 0L in
+    for i = 0 to 7 do
+      let open Int64 in
+      let n = of_int t.buffer.{t.position + i} in
+      result := logor !result (shift_left n (i * 8))
+    done;
     advance t 8;
-    result
+    !result
 
   let uleb128 t : u128 =
     let rec aux t shift acc =

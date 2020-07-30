@@ -16,7 +16,8 @@ let mk_entry
     address_start address_end pr pw px ps offset
     device_major device_minor inode pathname =
   { address_start; address_end; offset;
-    device_major; device_minor; inode; pathname;
+    device_major; device_minor; inode;
+    pathname = String.trim pathname;
     perm_read    = pr = 'r';
     perm_write   = pw = 'w';
     perm_execute = px = 'x';
@@ -24,7 +25,7 @@ let mk_entry
   }
 
 let scan_line ic =
-  Scanf.bscanf ic "%Lx-%Lx %c%c%c%c %Lx %x:%x %Ld %s@\n" mk_entry
+  Scanf.bscanf ic "%Lx-%Lx %c%c%c%c %Lx %x:%x %Ld%s@\n" mk_entry
 
 let rec scan_lines ic =
   match scan_line ic with

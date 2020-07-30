@@ -3,10 +3,7 @@ type t
 external extract : (_ -> _) -> t =
   "ml_owee_code_pointer" "ml_owee_code_pointer" "noalloc"
 
-let myself = lazy begin
-  (* 64-bit linux only :p *)
-  let pid = Unix.getpid () in
-  let path = "/proc/" ^ string_of_int pid ^ "/exe" in
+let map_binary path =
   let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
   let len = Unix.lseek fd 0 Unix.SEEK_END in
   let map =
@@ -15,10 +12,6 @@ let myself = lazy begin
          Bigarray.c_layout false [|len|]) in
   Unix.close fd;
   map
-end
-
-let force_int i : t = Obj.magic (lnot i lxor -1)
-let none = force_int 0
 
 let count_rows body =
   let open Owee_debug_line in
@@ -40,6 +33,14 @@ let count_rows body =
   in
   aux ()
 
+type 'a map_entry = {
+  addr_lo: int;
+  addr_hi: int;
+  payload: 'a;
+}
+
+type location = string * int * int
+
 let store_rows body array =
   let open Owee_debug_line in
   let cursor = Owee_buf.cursor body in
@@ -54,12 +55,14 @@ let store_rows body array =
       let check _header state address =
         if address <> max_int then
           begin
-            array.(!index) <-
-              address,
-              state.address,
-              (match !prev_file with
-               | Some fname -> Some (fname, !prev_line, !prev_col)
-               | None -> None);
+            array.(!index) <- {
+              addr_lo = address;
+              addr_hi = state.address;
+              payload =
+                (match !prev_file with
+                 | Some fname -> Some (fname, !prev_line, !prev_col : location)
+                 | None -> None);
+            };
             incr index
           end;
         prev_file := get_filename header state;
@@ -75,8 +78,7 @@ let store_rows body array =
   in
   aux ()
 
-let cache = lazy begin
-  let lazy buffer = myself in
+let extract_debug_info buffer =
   let _header, sections = Owee_elf.read_elf buffer in
   match Owee_elf.find_section sections ".debug_line" with
   | None -> [||]
@@ -84,28 +86,78 @@ let cache = lazy begin
     (*Printf.eprintf "Looking for 0x%X\n" t;*)
     let body = Owee_elf.section_body buffer section in
     let count = count_rows body in
-    let cache = Array.make count (max_int, max_int, None) in
-    store_rows body cache;
-    cache
+    let debug_entries = Array.make count
+        {addr_lo = max_int; addr_hi = max_int; payload = None} in
+    store_rows body debug_entries;
+    debug_entries
+
+let memory_map = lazy begin try
+    let slots = Hashtbl.create 7 in
+    let find_slot pathname =
+      try Hashtbl.find slots pathname
+      with Not_found ->
+        let slot = lazy (
+          try pathname |> map_binary |> extract_debug_info
+          with exn ->
+            prerr_endline ("Owee: fail to parse binary " ^ pathname ^ ": " ^
+                           Printexc.to_string exn);
+            [||]
+        ) in
+        Hashtbl.replace slots pathname slot;
+        slot
+    in
+    let add_entry acc (entry : Owee_linux_maps.entry) =
+      if not (Sys.file_exists entry.pathname) then acc
+      else
+        {
+          addr_lo = Int64.to_int entry.address_start;
+          addr_hi = Int64.to_int entry.address_end;
+          payload = (Int64.to_int entry.offset, find_slot entry.pathname)
+        } :: acc
+    in
+    let entries =
+      Owee_linux_maps.scan_self ()
+      |> List.fold_left add_entry []
+      |> Array.of_list
+    in
+    Array.sort (fun e1 e2 -> compare e1.addr_lo e2.addr_lo) entries;
+    entries
+  with exn ->
+    prerr_endline ("Owee: fail to parse memory map: " ^
+                   Printexc.to_string exn);
+    [||]
 end
 
-let rec bsearch cache i j address =
-  if i >= j then None
+
+let force_int i : t = Obj.magic (lnot i lxor -1)
+let none = force_int 0
+
+let rec bsearch table i j address =
+  if i >= j then raise Not_found
   else
     let k = (i + j) / 2 in
-    let a0, a1, result = cache.(k) in
-    if a0 lsr 1 <= address && address < a1 lsr 1 then
-      result
-    else if address < a0 lsr 1 then
-      bsearch cache i k address
+    let entry = table.(k) in
+    if entry.addr_lo lsr 1 <= address && address < entry.addr_hi lsr 1 then
+      entry
+    else if address < entry.addr_lo lsr 1 then
+      bsearch table i k address
     else
-      bsearch cache (k + 1) j address
+      bsearch table (k + 1) j address
+
+let bsearch table address =
+  bsearch table 0 (Array.length table) address
 
 let lookup t =
   if t = none then None
   else if Obj.is_int (Obj.repr t) then
-    let lazy cache = cache in
-    bsearch cache 0 (Array.length cache) (Obj.magic t : int)
+    let t : int = Obj.magic t in
+    let lazy memory_map = memory_map in
+    match bsearch memory_map t with
+    | exception Not_found -> None
+    | { payload = (offset, lazy entries); _ } as map_entry ->
+      match bsearch entries (t - map_entry.addr_lo lsr 1 + offset lsr 1) with
+      | exception Not_found -> None
+      | dbg_entry -> dbg_entry.payload
   else
     let t = Obj.repr t in
     assert (Obj.tag t = 0);

@@ -3,16 +3,6 @@ type t
 external extract : (_ -> _) -> t =
   "ml_owee_code_pointer" "ml_owee_code_pointer" "noalloc"
 
-let map_binary path =
-  let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
-  let len = Unix.lseek fd 0 Unix.SEEK_END in
-  let map =
-    Bigarray.array1_of_genarray
-      (Unix.map_file fd Bigarray.int8_unsigned
-         Bigarray.c_layout false [|len|]) in
-  Unix.close fd;
-  map
-
 let count_rows body =
   let open Owee_debug_line in
   let cursor = Owee_buf.cursor body in
@@ -97,7 +87,7 @@ let memory_map = lazy begin try
       try Hashtbl.find slots pathname
       with Not_found ->
         let slot = lazy (
-          try pathname |> map_binary |> extract_debug_info
+          try pathname |> Owee_buf.map_binary |> extract_debug_info
           with exn ->
             prerr_endline ("Owee: fail to parse binary " ^ pathname ^ ": " ^
                            Printexc.to_string exn);

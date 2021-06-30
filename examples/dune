@@ -1,7 +1,7 @@
 (executables
- (names decodedline_elf decodedline_macho functions)
+ (names decodedline_elf decodedline_macho functions locate)
  (libraries owee unix))
 
 (alias
  (name examples)
- (deps decodedline_elf.exe decodedline_macho.exe))
+ (deps decodedline_elf.exe decodedline_macho.exe functions.exe locate.exe))

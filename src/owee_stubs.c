@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define CAML_INTERNALS
+
+#include <caml/version.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/address_class.h>
+#include <caml/codefrag.h>
 
 /* Use dladdr. Should work at least with Linux, FreeBSD and OS X. */
 #define _GNU_SOURCE
@@ -38,14 +42,21 @@ static void *closure_code_pointer(value closure)
   void *cp = (void*)Field(closure, 0);
 
   /* Normal code pointer */
-  if (cp < (void*)&caml_startup__code_begin || cp > (void*)&caml_startup__code_end)
+  if (cp < (void*)&caml_startup__code_begin ||
+      cp > (void*)&caml_startup__code_end)
     return cp;
 
   for (i = 1; i < Wosize_val(closure); ++i)
   {
     void *cp2 = (void*)Field(closure, i);
+#if OCAML_VERSION >= 41200
+    struct code_fragment *cf = caml_find_code_fragment_by_pc(cp2);
+    if (cf != NULL)
+      return cp2;
+#else
     if (cp2 >= (void*)caml_code_area_start && cp2 <= (void*)caml_code_area_end)
       return cp2;
+#endif
   }
 
   return cp;

@@ -8,13 +8,7 @@ let path =
   else
     Sys.argv.(1)
 
-let buffer =
-  let fd = Unix.openfile path [Unix.O_RDONLY] 0 in
-  let len = Unix.lseek fd 0 Unix.SEEK_END in
-  let map = Bigarray.Array1.map_file fd
-      Bigarray.int8_unsigned Bigarray.c_layout false len in
-  Unix.close fd;
-  map
+let buffer = Owee_buf.map_binary path
 
 let _header, commands = Owee_macho.read buffer
 
@@ -28,7 +22,7 @@ let iter_sections f segment =
   Array.iter (f segment) segment.Owee_macho.seg_sections
 
 let debug_section segment = function
-  | {Owee_macho.sec_sectname = "__debug_line"; sec_segname = "__DWARF"}
+  | {Owee_macho.sec_sectname = "__debug_line"; sec_segname = "__DWARF"; _}
     as section ->
     let body = Owee_buf.cursor (Owee_macho.section_body buffer segment section) in
     let rec aux () =

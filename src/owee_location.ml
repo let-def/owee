@@ -71,7 +71,7 @@ let store_rows body array =
 let extract_debug_info buffer =
   let _header, sections = Owee_elf.read_elf buffer in
   match Owee_elf.find_section sections ".debug_line" with
-  | None -> [||]
+  | None -> [||],None
   | Some section ->
     (*Printf.eprintf "Looking for 0x%X\n" t;*)
     let body = Owee_elf.section_body buffer section in
@@ -79,7 +79,7 @@ let extract_debug_info buffer =
     let debug_entries = Array.make count
         {addr_lo = max_int; addr_hi = max_int; payload = None} in
     store_rows body debug_entries;
-    debug_entries
+    debug_entries, (Owee_elf.find_section sections ".text")
 
 let memory_map = lazy begin try
     let slots = Hashtbl.create 7 in
@@ -91,7 +91,7 @@ let memory_map = lazy begin try
           with exn ->
             prerr_endline ("Owee: fail to parse binary " ^ pathname ^ ": " ^
                            Printexc.to_string exn);
-            [||]
+            ([||],None)
         ) in
         Hashtbl.replace slots pathname slot;
         slot
@@ -144,10 +144,16 @@ let lookup t =
     let lazy memory_map = memory_map in
     match bsearch memory_map t with
     | exception Not_found -> None
-    | { payload = (offset, lazy entries); _ } as map_entry ->
-      match bsearch entries (t - map_entry.addr_lo lsr 1 + offset lsr 1) with
-      | exception Not_found -> None
-      | dbg_entry -> dbg_entry.payload
+    | { payload = (offset, lazy (entries,text_section)); _ } as map_entry ->
+      match text_section with
+      | None -> None
+      | Some text_section ->
+        let sec_offset = Int64.(shift_right text_section.sh_offset 1 |> to_int) in
+        let sec_addr = Int64.(shift_right text_section.sh_addr 1 |> to_int) in
+        let a = t - map_entry.addr_lo lsr 1 + offset lsr 1 + sec_addr - sec_offset in
+        match bsearch entries a with
+        | exception Not_found -> None
+        | dbg_entry -> dbg_entry.payload
   else
     let t = Obj.repr t in
     assert (Obj.tag t = 0);

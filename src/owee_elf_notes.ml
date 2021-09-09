@@ -78,10 +78,11 @@ let read_header cursor =
     typ;
   }
 
+exception Section_not_found of string
+
 let find_notes_section sections name =
   match Owee_elf.find_section sections name with
-  | None ->
-    Owee_buf.invalid_format ("Not found section "^name)
+  | None -> raise (Section_not_found name)
   | Some s ->
     match s.sh_type with
     | 7 (* SHT_NOTE *) -> s

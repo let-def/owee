@@ -14,6 +14,8 @@ val read_desc_size
   -> expected_type:int
   -> int
 
+exception Section_not_found of string
+
 module Stapsdt : sig
   type t =
     { addr : int64 (** address of the probe site *)
@@ -26,7 +28,7 @@ module Stapsdt : sig
   (** [iter buf sections ~f] applies [f] to each stapsdt note,
       in order of appearance in .notes.stapsdt section.
       Expects [buf] to point to the beginning of an elf file.
-      Raises .note.stapsdt section is not found.
+      Raises [Section_not_found] if .note.stapsdt section is not found.
       Raises if .note.stapsdt is found but .stapsdt.base is not.
       Raises if the owner is not "stapsdt" or the type is not 3
       for version 3 of probes.

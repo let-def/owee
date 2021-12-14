@@ -148,7 +148,10 @@ module Stapsdt = struct
     (* skip padding of description to 4-byte boundary *)
     gulp_padding cursor descsz;
     { addr = adjust addr ~actual_base ~recorded_base
-    ; semaphore = Option.map (adjust ~actual_base ~recorded_base) semaphore
+    ; semaphore = begin match semaphore with
+        | None -> None
+        | Some s -> Some (adjust s ~actual_base ~recorded_base)
+      end
     ; provider
     ; name
     ; args

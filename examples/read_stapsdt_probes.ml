@@ -8,6 +8,10 @@ let () =
   in
   let buffer = Owee_buf.map_binary path in
   let _header, sections = Owee_elf.read_elf buffer in
+  let option_value ~default = function
+    | None -> default
+    | Some x -> x
+  in
   let f (p : Owee_elf_notes.Stapsdt.t) =
     Printf.printf
       "addr=0x%Lx %s %s %s semaphore=0x%Lx\n"
@@ -15,7 +19,7 @@ let () =
       p.provider
       p.name
       p.args
-      (Option.value p.semaphore ~default:0L)
+      (option_value p.semaphore ~default:0L)
   in
   Owee_elf_notes.Stapsdt.iter buffer sections ~f
 ;;

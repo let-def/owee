@@ -7,7 +7,9 @@
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/address_class.h>
+#if OCAML_VERSION >= 41200
 #include <caml/codefrag.h>
+#endif
 
 /* Use dladdr. Should work at least with Linux, FreeBSD and OS X. */
 #define _GNU_SOURCE

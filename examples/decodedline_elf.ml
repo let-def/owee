@@ -16,9 +16,13 @@ let () =
   match Owee_elf.find_section sections ".debug_line" with
   | None -> ()
   | Some section ->
-    let body = Owee_buf.cursor (Owee_elf.section_body buffer section) in
+    let pointers_to_other_sections =
+      Owee_elf.debug_line_pointers buffer sections
+    and body =
+      Owee_buf.cursor (Owee_elf.section_body buffer section)
+    in
     let rec aux () =
-      match Owee_debug_line.read_chunk body with
+      match Owee_debug_line.read_chunk ~pointers_to_other_sections body with
       | None -> ()
       | Some (header, chunk) ->
         let check header state () =

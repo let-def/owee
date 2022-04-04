@@ -15,7 +15,8 @@ type pointers_to_other_sections = {
     to the end) and [Some (header, cursor')] is returned.
 
     [pointers_to_other_sections] are needed in DWARF 5 because filenames can be
-    pointers to strings in entirely separate sections of DWARF. *)
+    pointers to strings in entirely separate sections of DWARF. You can use
+    {! Owee_elf.debug_line_pointers} to construct such a value. *)
 val read_chunk
   :  cursor
   -> pointers_to_other_sections:pointers_to_other_sections

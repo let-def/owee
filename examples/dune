@@ -1,5 +1,6 @@
 (executables
  (names decodedline_elf decodedline_macho functions locate read_buildid read_stapsdt_probes)
+ (modes byte exe)
  (libraries owee unix))
 
 (alias
@@ -34,3 +35,21 @@
  (alias runtest)
  (deps test-dwarf-5.expected test-dwarf-5.output)
  (action (diff test-dwarf-5.expected test-dwarf-5.output)))
+
+(rule
+ (alias runtest)
+ (targets test-locate-native.output test-locate-bytecode.output)
+ (action
+  (progn
+   (with-stdout-to test-locate-native.output (run %{exe:locate.exe}))
+   (with-stdout-to test-locate-bytecode.output (run %{exe:locate.bc})))))
+
+(rule
+ (alias runtest)
+ (deps test-locate-native.expected )
+ (action (diff test-locate-native.output test-locate-native.expected)))
+
+(rule
+ (alias runtest)
+ (deps test-locate-bytecode.expected )
+ (action (diff test-locate-bytecode.output test-locate-bytecode.expected)))

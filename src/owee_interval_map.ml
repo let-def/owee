@@ -176,3 +176,8 @@ let query t (addr : int64) =
     initialize_until t l;
     RMap.list_from t.maps.(l) addr
   )
+
+let create count ~f =
+  let result = create count ~f in
+  initialize_until result (count - 1);
+  result

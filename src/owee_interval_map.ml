@@ -195,7 +195,7 @@ let query t (addr : int64) =
     RMap.list_from t.maps.(l) addr
   )
 
-let create count ~f =
+(*let create count ~f =
   let result = create count ~f in
   let t0 = Sys.time () in
   let min0, prom0, maj0 = Gc.counters () in
@@ -204,4 +204,4 @@ let create count ~f =
   let t1 = Sys.time () in
   Printf.eprintf "owee: minor:%.0f prom:%.0f maj:%.0f t:%.02f\n%!"
     (min1 -. min0) (prom1 -. prom0) (maj1 -. maj0) (t1 -. t0);
-  result
+  result*)

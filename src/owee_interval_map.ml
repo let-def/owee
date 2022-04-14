@@ -179,5 +179,9 @@ let query t (addr : int64) =
 
 let create count ~f =
   let result = create count ~f in
+  let min0, prom0, maj0 = Gc.counters () in
   initialize_until result (count - 1);
+  let min1, prom1, maj1 = Gc.counters () in
+  Printf.eprintf "owee: minor:%.0f prom:%.0f maj:%.0f\n%!"
+    (min1 -. min0) (prom1 -. prom0) (maj1 -. maj0);
   result

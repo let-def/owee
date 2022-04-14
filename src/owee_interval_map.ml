@@ -131,20 +131,13 @@ end
 type 'a t = {
   intervals: 'a interval array;
   maps: 'a RMap.t array;
+  mutable last: int;
 }
 
 let create count ~f =
   let intervals = Array.init count f in
   Array.fast_sort (fun i1 i2 -> Int.compare i1.lbound i2.lbound) intervals;
-  let cumulative = ref RMap.empty in
-  let maps =
-    Array.map (fun i ->
-        let m = RMap.add i !cumulative in
-        cumulative := m;
-        m
-      ) intervals
-  in
-  { intervals; maps }
+  { intervals; maps = Array.make count RMap.empty; last = -1 }
 
 let iter (t : _ t) ~f =
   Array.iter f t.intervals
@@ -165,9 +158,21 @@ let closest_key intervals (addr : int) =
   assert (!l = -1 || intervals.(!l).lbound <= addr);
   !l
 
+let initialize_until t j =
+  let last = t.last in
+  if j > last then (
+    let cumulative = ref (if last < 0 then RMap.empty else t.maps.(last)) in
+    for i = last + 1 to j do
+      cumulative := RMap.add t.intervals.(i) !cumulative;
+      t.maps.(i) <- !cumulative;
+    done;
+    t.last <- j;
+  )
+
 let query t (addr : int64) =
   let addr = Int64.to_int addr in
   let l = closest_key t.intervals addr in
-  if l = -1
-  then []
-  else RMap.list_from t.maps.(l) addr
+  if l = -1 then [] else (
+    initialize_until t l;
+    RMap.list_from t.maps.(l) addr
+  )

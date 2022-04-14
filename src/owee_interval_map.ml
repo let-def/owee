@@ -1,16 +1,24 @@
 (* Taken from grenier.baltree
    https://github.com/let-def/grenier/blob/master/baltree/bt1.mli *)
 
+type 'a interval = {
+  lbound: int;
+  rbound: int;
+  value: 'a;
+}
+
 module Tree : sig
   type 'a t = private
     | Leaf
-    | Node of int * 'a t * 'a * 'a t
+    | Node of int * 'a t * 'a interval * 'a t
+  (*val size : 'a t -> int*)
   val leaf : 'a t
-  val node : 'a t -> 'a -> 'a t -> 'a t
+  val node : 'a t -> 'a interval -> 'a t -> 'a t
+  val bound : int ref
 end = struct
   type 'a t =
     | Leaf
-    | Node of int * 'a t * 'a * 'a t
+    | Node of int * 'a t * 'a interval * 'a t
 
   let size = function
     | Node (s, _, _, _) -> s
@@ -60,25 +68,32 @@ end = struct
 
   let leaf = Leaf
 
-  let node l x r = match l, r with
+  let bound = ref min_int
+
+  let rec node l x r =
+    if x.rbound < !bound then
+      join l r
+    else match l, r with
     | Leaf, Leaf -> node_ leaf x leaf
     | l, r when size l < size r ->
       node_left l x r
     | l, r ->
       node_right l x r
-end
 
-type 'a interval = {
-  lbound: int;
-  rbound: int;
-  value: 'a;
-}
+  and join l r = match l, r with
+    | Leaf, t | t, Leaf -> t
+    | Node (sl, ll, x, lr), Node (sr, rl, y, rr) ->
+      if sl <= sr then
+        node (join l rl) y rr
+      else
+        node ll x (join lr r)
+end
 
 let interval l r value =
   {lbound = Int64.to_int l; rbound = Int64.to_int r; value}
 
 module RMap = struct
-  type 'a t = 'a interval Tree.t
+  type 'a t = 'a Tree.t
   let empty = Tree.leaf
 
   let singleton interval =
@@ -163,7 +178,10 @@ let initialize_until t j =
   if j > last then (
     let cumulative = ref (if last < 0 then RMap.empty else t.maps.(last)) in
     for i = last + 1 to j do
-      cumulative := RMap.add t.intervals.(i) !cumulative;
+      let interval = t.intervals.(i) in
+      Tree.bound := interval.lbound;
+      cumulative := RMap.add interval !cumulative;
+      (*Printf.eprintf "size: %d\n" (Tree.size !cumulative);*)
       t.maps.(i) <- !cumulative;
     done;
     t.last <- j;

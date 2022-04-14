@@ -1,6 +1,6 @@
 type 'a interval = {
-  lbound: int64;
-  rbound: int64;
+  lbound: int;
+  rbound: int;
   value: 'a;
 }
 

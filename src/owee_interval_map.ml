@@ -69,12 +69,13 @@ end = struct
 end
 
 type 'a interval = {
-  lbound: int64;
-  rbound: int64;
+  lbound: int;
+  rbound: int;
   value: 'a;
 }
 
-let interval lbound rbound value = {lbound; rbound; value}
+let interval l r value =
+  {lbound = Int64.to_int l; rbound = Int64.to_int r; value}
 
 module RMap = struct
   type 'a t = 'a interval Tree.t
@@ -86,27 +87,15 @@ module RMap = struct
   let rec add i = function
     | Tree.Leaf -> singleton i
     | Tree.Node (_, l, j, r) ->
-      let c = Int64.compare i.rbound j.rbound in
+      let c = Int.compare i.rbound j.rbound in
       if c < 0
       then Tree.node (add i l) j r
       else Tree.node l j (add i r)
 
-  let merge_singleton map = function
-    | Tree.Node (_, Tree.Leaf, interval, Tree.Leaf) ->
-      add interval map
-    | _ -> assert false
-
-  let rec iter (f : 'a interval -> unit) = function
-    | Tree.Leaf -> ()
-    | Tree.Node (_, l, i, r) ->
-      iter f l;
-      f i;
-      iter f r
-
   let rec build_spine bound acc = function
     | Tree.Leaf -> acc
     | Tree.Node (_, l, i, r) ->
-      let c = Int64.compare i.rbound bound in
+      let c = Int.compare i.rbound bound in
       if c >= 0 then
         build_spine bound ((i, r) :: acc) l
       else
@@ -139,54 +128,46 @@ end
   Implementation by Frédéric Bour (@let-def)
 *)
 
-type 'a t = (int64 * 'a RMap.t) array
+type 'a t = {
+  intervals: 'a interval array;
+  maps: 'a RMap.t array;
+}
 
 let create count ~f =
-  let maps = Array.init count (fun i ->
-      let interval = f i in
-      interval.lbound, RMap.singleton interval
-    )
-  in
-  Array.fast_sort (fun (l1,_) (l2,_) -> Int64.compare l1 l2) maps;
+  let intervals = Array.init count f in
+  Array.fast_sort (fun i1 i2 -> Int.compare i1.lbound i2.lbound) intervals;
   let cumulative = ref RMap.empty in
-  Array.iteri (fun i (l,m) ->
-      let m = RMap.merge_singleton !cumulative m in
-      cumulative := m;
-      maps.(i) <- (l, m)
-    ) maps;
-  maps
+  let maps =
+    Array.map (fun i ->
+        let m = RMap.add i !cumulative in
+        cumulative := m;
+        m
+      ) intervals
+  in
+  { intervals; maps }
 
-let iter t ~f =
-  match t with
-  | [||] -> ()
-  | maps ->
-    let _, rmap = maps.(Array.length maps - 1) in
-    RMap.iter f rmap
+let iter (t : _ t) ~f =
+  Array.iter f t.intervals
 
-let closest_key t (addr : int64) =
+let closest_key intervals (addr : int) =
   let l = ref 0 in
-  let r = ref (Array.length t - 1) in
+  let r = ref (Array.length intervals - 1) in
   while !l <= !r do
     let m = !l + (!r - !l) / 2 in
-    let lb, _ = t.(m) in
+    let lb = intervals.(m).lbound in
     if lb < addr then
       l := m + 1
     else
       r := m - 1
   done;
-  if !l = Array.length t then
-    decr l
-  else (
-    let lb, _ = t.(!l) in
-    if lb > addr then decr l;
-  );
-  assert (!l = -1 || let lb, _ = t.(!l) in lb <= addr);
+  if (!l = Array.length intervals) || (intervals.(!l).lbound > addr) then
+    decr l;
+  assert (!l = -1 || intervals.(!l).lbound <= addr);
   !l
 
 let query t (addr : int64) =
-  let l = closest_key t addr in
-  if l = -1 then
-    []
-  else
-    let _, rmap = t.(l) in
-    RMap.list_from rmap addr
+  let addr = Int64.to_int addr in
+  let l = closest_key t.intervals addr in
+  if l = -1
+  then []
+  else RMap.list_from t.maps.(l) addr

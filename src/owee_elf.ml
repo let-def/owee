@@ -265,7 +265,7 @@ module Symbol_table = struct
   end
 
   module One_table = struct
-    type t = Symbol.t Owee_interval_tree.t
+    type t = Symbol.t Owee_interval_map.t
 
     let extract buf ~index : Symbol.t =
       let cursor = Owee_buf.cursor buf ~at:(index * Symbol.struct_size) in
@@ -285,20 +285,20 @@ module Symbol_table = struct
 
     let create buf =
       let num_symbols = (Owee_buf.size buf) / Symbol.struct_size in
-      let interval_array =
-        Array.init num_symbols (fun index ->
-          let symbol = extract buf ~index in
-          Owee_interval_tree.Interval.create
-            (Symbol.value symbol)
-            (Symbol.symbol_end symbol)
-            symbol)
-      in
-      Owee_interval_tree.create (Array.to_list interval_array)
+      Owee_interval_map.create num_symbols
+        ~f:(fun index ->
+            let symbol = extract buf ~index in
+            Owee_interval_map.interval
+              (Symbol.value symbol)
+              (Symbol.symbol_end symbol)
+              symbol
+          )
 
     let symbols_enclosing_address_exn t ~address =
-      List.map (fun (interval : Symbol.t Owee_interval_tree.Interval.t) ->
-          interval.value)
-        (Owee_interval_tree.query t address)
+      List.map
+        (fun (interval : Symbol.t Owee_interval_map.interval) ->
+           interval.value)
+        (Owee_interval_map.query t address)
   end
 
   type t = One_table.t list
@@ -321,8 +321,8 @@ module Symbol_table = struct
       (symbols_enclosing_address t ~address)
 
   let iter t ~f =
-    let f sym = f sym.Owee_interval_tree.Interval.value in
-    List.iter (fun tree -> Owee_interval_tree.iter tree ~f) t
+    let f sym = f sym.Owee_interval_map.value in
+    List.iter (fun tree -> Owee_interval_map.iter tree ~f) t
 end
 
 let find_symbol_table buf sections =

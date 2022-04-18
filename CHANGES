@@ -1,6 +1,13 @@
-Owee 0.5
-Fri Apr  1 22:24:53 JST 2022
+Owee 0.6
 ========
+Mon Apr 18 10:59:40 JST 2022
+
+- Significant optimization of interval computations with help from
+  Tudor Brindus (@Xyene) and Timothy Li (@FatalEagle)
+
+Owee 0.5
+========
+Fri Apr  1 22:24:53 JST 2022
 
 - Partial support for Dwarf-5 contributed by @billduff and @cgaebel
 

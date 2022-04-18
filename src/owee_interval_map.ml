@@ -1,5 +1,9 @@
-(* Taken from grenier.baltree
-   https://github.com/let-def/grenier/blob/master/baltree/bt1.mli *)
+(* Representation of intervals.
+
+   Even though the addresses are 64-bits, we assume that the higher-order bits
+   are 0 (true on linux for user-space addresses).
+   Therefore we can use tagged integers for better performance.
+*)
 
 type 'a interval = {
   lbound: int;
@@ -7,14 +11,29 @@ type 'a interval = {
   value: 'a;
 }
 
+let interval l r value = {
+  lbound = Int64.to_int l;
+  rbound = Int64.to_int r;
+  value
+}
+
+(* A specialized implementation of a balanced-binary tree
+   that lazily prune out-of-bound intervals during rebalancing.
+
+   Core balancing algorithm is taken from grenier.baltree
+   https://github.com/let-def/grenier/blob/master/baltree/bt1.mli
+*)
 module Tree : sig
   type 'a t = private
     | Leaf
     | Node of int * 'a t * 'a interval * 'a t
-  (*val size : 'a t -> int*)
+
   val leaf : 'a t
   val node : 'a t -> 'a interval -> 'a t -> 'a t
-  val bound : int ref
+
+  (* [set_bound l] will cause [node] to prune intervals that end before [l]
+     during rebalancing. *)
+  val set_bound : int -> unit
 end = struct
   type 'a t =
     | Leaf
@@ -70,6 +89,8 @@ end = struct
 
   let bound = ref min_int
 
+  let set_bound x = bound := x
+
   let rec node l x r =
     if x.rbound < !bound then
       join l r
@@ -89,23 +110,23 @@ end = struct
         node ll x (join lr r)
 end
 
-let interval l r value =
-  {lbound = Int64.to_int l; rbound = Int64.to_int r; value}
+(* Implement a right-bound ordered interval map on top of Tree *)
 
 module RMap = struct
   type 'a t = 'a Tree.t
   let empty = Tree.leaf
 
-  let singleton interval =
-    Tree.node empty interval empty
-
   let rec add i = function
-    | Tree.Leaf -> singleton i
+    | Tree.Leaf -> Tree.node empty i empty
     | Tree.Node (_, l, j, r) ->
       let c = Int.compare i.rbound j.rbound in
       if c < 0
       then Tree.node (add i l) j r
       else Tree.node l j (add i r)
+
+  let add i t =
+    Tree.set_bound i.lbound;
+    add i t
 
   let rec build_spine bound acc = function
     | Tree.Leaf -> acc
@@ -121,15 +142,6 @@ module RMap = struct
     | Tree.Node (_, l, i, r) ->
       expand_spine ((i, r) :: acc) l
 
-  let _seq_from rmap bound =
-    let rec node spine () =
-      match spine with
-      | [] -> Seq.Nil
-      | (i, r) :: spine' ->
-        Seq.Cons (i, node (expand_spine spine' r))
-    in
-    node (build_spine bound [] rmap)
-
   let list_from rmap bound =
     let rec loop acc = function
       | [] -> acc
@@ -140,7 +152,22 @@ end
 
 (*
   Algorithm suggested by Tudor Brindus (@Xyene) and Timothy Li (@FatalEagle)
-  Implementation by Frédéric Bour (@let-def)
+  Implementation by Frédéric Bour (@let-def).
+
+  See https://github.com/let-def/owee/issues/23,
+  and https://github.com/let-def/owee/pull/24.
+*)
+
+(*
+  The [intervals] array contain each interval definition.
+  The [maps.(i)] contains a tree of all intervals that overlap [intervals.(i)].
+  Both are ordered by left-bound of intervals.
+
+  [maps] is computed by a left-scan that is done lazily. [last] contains the
+  last index of [maps] that was computed.
+  Therefore all cells [maps.(i)] for [0 <= i <= last] are valid, while
+  [last < i < Array.length.(maps)] still have to be computed.
+  This is done by [initialize_until].
 *)
 
 type 'a t = {
@@ -157,6 +184,22 @@ let create count ~f =
 let iter (t : _ t) ~f =
   Array.iter f t.intervals
 
+(* Lazy initialization of [t.maps] *)
+
+let initialize_until t j =
+  let last = t.last in
+  if j > last then (
+    let cumulative = ref (if last < 0 then RMap.empty else t.maps.(last)) in
+    for i = last + 1 to j do
+      let interval = t.intervals.(i) in
+      cumulative := RMap.add interval !cumulative;
+      (*Printf.eprintf "size: %d\n" (Tree.size !cumulative);*)
+      t.maps.(i) <- !cumulative;
+    done;
+    t.last <- j;
+  )
+
+(* Left-leaning binary search on array of intervals *)
 let closest_key intervals (addr : int) =
   let l = ref 0 in
   let r = ref (Array.length intervals - 1) in
@@ -173,20 +216,9 @@ let closest_key intervals (addr : int) =
   assert (!l = -1 || intervals.(!l).lbound <= addr);
   !l
 
-let initialize_until t j =
-  let last = t.last in
-  if j > last then (
-    let cumulative = ref (if last < 0 then RMap.empty else t.maps.(last)) in
-    for i = last + 1 to j do
-      let interval = t.intervals.(i) in
-      Tree.bound := interval.lbound;
-      cumulative := RMap.add interval !cumulative;
-      (*Printf.eprintf "size: %d\n" (Tree.size !cumulative);*)
-      t.maps.(i) <- !cumulative;
-    done;
-    t.last <- j;
-  )
-
+(* Query algorithm:
+   - find the closest interval that starts before [addr]
+   - return the list of all overlapping intervals that end after [addr] *)
 let query t (addr : int64) =
   let addr = Int64.to_int addr in
   let l = closest_key t.intervals addr in
@@ -195,13 +227,18 @@ let query t (addr : int64) =
     RMap.list_from t.maps.(l) addr
   )
 
-(*let create count ~f =
-  let result = create count ~f in
-  let t0 = Sys.time () in
-  let min0, prom0, maj0 = Gc.counters () in
-  initialize_until result (count - 1);
-  let min1, prom1, maj1 = Gc.counters () in
-  let t1 = Sys.time () in
-  Printf.eprintf "owee: minor:%.0f prom:%.0f maj:%.0f t:%.02f\n%!"
-    (min1 -. min0) (prom1 -. prom0) (maj1 -. maj0) (t1 -. t0);
-  result*)
+(*
+  Uncomment: switch to eager creation and print counters on interval
+  computation
+
+  let create count ~f =
+    let result = create count ~f in
+    let t0 = Sys.time () in
+    let min0, prom0, maj0 = Gc.counters () in
+    initialize_until result (count - 1);
+    let min1, prom1, maj1 = Gc.counters () in
+    let t1 = Sys.time () in
+    Printf.eprintf "owee: minor:%.0f prom:%.0f maj:%.0f t:%.02f\n%!"
+      (min1 -. min0) (prom1 -. prom0) (maj1 -. maj0) (t1 -. t0);
+    result
+*)

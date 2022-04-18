@@ -110,6 +110,8 @@ end = struct
         node ll x (join lr r)
 end
 
+let int_compare : int -> int -> int = compare
+
 (* Implement a right-bound ordered interval map on top of Tree *)
 
 module RMap = struct
@@ -119,7 +121,7 @@ module RMap = struct
   let rec add i = function
     | Tree.Leaf -> Tree.node empty i empty
     | Tree.Node (_, l, j, r) ->
-      let c = Int.compare i.rbound j.rbound in
+      let c = int_compare i.rbound j.rbound in
       if c < 0
       then Tree.node (add i l) j r
       else Tree.node l j (add i r)
@@ -131,7 +133,7 @@ module RMap = struct
   let rec build_spine bound acc = function
     | Tree.Leaf -> acc
     | Tree.Node (_, l, i, r) ->
-      let c = Int.compare i.rbound bound in
+      let c = int_compare i.rbound bound in
       if c >= 0 then
         build_spine bound ((i, r) :: acc) l
       else
@@ -178,7 +180,7 @@ type 'a t = {
 
 let create count ~f =
   let intervals = Array.init count f in
-  Array.fast_sort (fun i1 i2 -> Int.compare i1.lbound i2.lbound) intervals;
+  Array.fast_sort (fun i1 i2 -> int_compare i1.lbound i2.lbound) intervals;
   { intervals; maps = Array.make count RMap.empty; last = -1 }
 
 let iter (t : _ t) ~f =

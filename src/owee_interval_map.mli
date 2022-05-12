@@ -10,15 +10,17 @@ type 'a t
 
 (** {4 Constructors} *)
 
-(** [create intervals_list] : interval tree of all intervals in the list *)
+(** [create count f] : returns a new interval map which contains [count] intervals,
+    returned by [f i] where [i] is from 0 to [count - 1].
+
+    @raise Invalid_argument if [count < 0] or [count > Sys.max_array_length]. *)
 val create : int -> f:(int -> 'a interval) -> 'a t
 
 (** {4 Query} *)
 
-(** [query tree q] : list of intervals in the tree [t] containing
-    the Int64.t [q] *)
+(** [query t q] : list of intervals in [t] containing the Int64.t [q] *)
 val query : 'a t -> Int64.t -> 'a interval list
 
-(** [iter tree ~f] calls applies [f] to each interval that has been added to
-    [tree].  Traversal order is not specified.  *)
+(** [iter t ~f] applies [f] to each interval that has been added to
+    [t].  Traversal order is not specified.  *)
 val iter : 'a t -> f:('a interval -> unit) -> unit

@@ -19,7 +19,7 @@ type pointers_to_other_sections = {
     {! Owee_elf.debug_line_pointers} to construct such a value. *)
 val read_chunk
   :  cursor
-  -> pointers_to_other_sections:pointers_to_other_sections
+  -> pointers_to_other_sections:pointers_to_other_sections option
   -> (header * cursor) option
 
 (** State of the linenumber automaton.

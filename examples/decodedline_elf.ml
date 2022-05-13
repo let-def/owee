@@ -2,11 +2,21 @@
    output should be similar to
    objdump --dwarf=decodedline <mybin>
 *)
+let useage () =
+  (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf [-no-address]"); exit 1)
+
 let path =
   if Array.length Sys.argv <= 1 then
-    (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf"); exit 1)
+    useage ()
   else
     Sys.argv.(1)
+
+let print_address =
+  if Array.length Sys.argv <= 2 then
+    true
+  else match Sys.argv.(2) with
+    | "-no-address" -> false
+    | _ -> useage ()
 
 let buffer = Owee_buf.map_binary path
 
@@ -31,7 +41,11 @@ let () =
           match get_filename header state with
           | None -> ()
           | Some filename ->
-            Printf.printf "%s\t%d\t0x%x\n" filename state.line state.address
+            Printf.printf "%s\t%d" filename state.line;
+            if print_address then
+              Printf.printf "\t0x%x\n" state.address
+            else
+              print_newline ()
         in
         Owee_debug_line.fold_rows (header, chunk) check ();
         aux ()

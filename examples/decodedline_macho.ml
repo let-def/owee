@@ -26,7 +26,7 @@ let debug_section segment = function
     as section ->
     let body = Owee_buf.cursor (Owee_macho.section_body buffer segment section) in
     let rec aux () =
-      match Owee_debug_line.read_chunk body with
+      match Owee_debug_line.read_chunk body ~pointers_to_other_sections:None with
       | None -> ()
       | Some (header, chunk) ->
         let check header state () =

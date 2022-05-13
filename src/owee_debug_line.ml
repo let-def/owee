@@ -109,7 +109,7 @@ let skip_directories t ~is_64bit ~version ~address_size =
 let read_filenames_version_lt_5 t =
   let rec loop acc =
     match read_filename_version_lt_5 t with
-    | "" -> acc 
+    | "" -> acc
     | fname ->
       (*Printf.eprintf "%S\n%!" fname;*)
       loop (fname :: acc)
@@ -166,11 +166,15 @@ let read_filenames
     read_filenames_version_lt_5 t
   else begin
     let address_size = unwrap_address_size_v5_only address_size in
-    read_filenames_version_gte_5
-      t
-      ~pointers_to_other_sections 
-      ~is_64bit
-      ~address_size
+        match pointers_to_other_sections with
+    | None ->
+      invalid_format "Owee needs pointers_to_other_sections for Dwarf5"
+    | Some pointers_to_other_sections ->
+      read_filenames_version_gte_5
+        t
+        ~pointers_to_other_sections
+        ~is_64bit
+        ~address_size
   end
 
 let read_prologue_length t ~is_64bit =

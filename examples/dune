@@ -3,7 +3,7 @@
  (libraries owee unix))
 
 (alias
- (name examples)
+ (name runtest)
  (deps decodedline_elf.exe decodedline_macho.exe 
        functions.exe locate.exe
        read_buildid.exe read_stapsdt_probes.exe))
@@ -22,8 +22,8 @@
  (targets test-dwarf-4.output test-dwarf-5.output)
  (action
   (progn
-   (with-stdout-to test-dwarf-4.output (run %{exe:decodedline_elf.exe} test-4.bin))
-   (with-stdout-to test-dwarf-5.output (run %{exe:decodedline_elf.exe} test-5.bin)))))
+   (with-stdout-to test-dwarf-4.output (run %{exe:decodedline_elf.exe} test-4.bin -no-address))
+   (with-stdout-to test-dwarf-5.output (run %{exe:decodedline_elf.exe} test-5.bin -no-address)))))
 
 (rule
  (alias runtest)

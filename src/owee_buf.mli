@@ -23,6 +23,7 @@ type u16  = int
 type s32  = int
 type u32  = int
 type u64  = int64
+type i64  = int64
 type s128 = int (* Ahem, we don't expect 128 bits to really consume 128 bits *)
 type u128 = int
 
@@ -50,6 +51,7 @@ module Read : sig
   val u32     : cursor -> u32
   val u32be   : cursor -> u32
   val u64     : cursor -> u64
+  val i64     : cursor -> i64
   val uleb128 : cursor -> u128
   val sleb128 : cursor -> s128
 

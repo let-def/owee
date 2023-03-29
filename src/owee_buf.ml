@@ -47,6 +47,7 @@ type u16 = int
 type s32 = int
 type u32 = int
 type u64 = int64
+type i64 = int64
 type s128 = int
 type u128 = int
 
@@ -89,6 +90,10 @@ module Read = struct
     done;
     advance t 8;
     !result
+
+  let i64 t : i64 =
+    (* u64 are wrapped in an i64 and are actually signed. *)
+    u64 t
 
   let uleb128 t : u128 =
     let rec aux t shift acc =

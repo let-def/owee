@@ -208,7 +208,7 @@ let closest_key intervals (addr : int) =
   while !l <= !r do
     let m = !l + (!r - !l) / 2 in
     let lb = intervals.(m).lbound in
-    if lb < addr then
+    if lb <= addr then
       l := m + 1
     else
       r := m - 1

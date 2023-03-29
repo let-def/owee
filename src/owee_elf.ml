@@ -173,6 +173,10 @@ end
 let find_string_table buf sections =
   find_section_body buf sections ~section_name:".strtab"
 
+let find_dynamic_string_table buf sections =
+  find_section_body buf sections ~section_name:".dynstr"
+
+
 let debug_line_pointers buf sections =
   { Owee_debug_line.
      debug_line_str =
@@ -197,6 +201,7 @@ module Symbol_table = struct
       st_value : Int64.t;
       st_size : Int64.t;
       symbol_end : Int64.t;
+      index : int
     }
 
     let struct_size = (32 + 8 + 8 + 16 + 64 + 64) / 8
@@ -262,6 +267,8 @@ module Symbol_table = struct
     let section_header_table_index t = t.st_shndx
 
     let symbol_end t = t.symbol_end
+
+    let index t = t.index
   end
 
   module One_table = struct
@@ -281,7 +288,7 @@ module Symbol_table = struct
         else
           Int64.add st_value st_size
       in
-      { st_name; st_info; st_other; st_shndx; st_value; st_size; symbol_end; }
+      { st_name; st_info; st_other; st_shndx; st_value; st_size; symbol_end; index}
 
     let create buf =
       let num_symbols = (Owee_buf.size buf) / Symbol.struct_size in
@@ -302,6 +309,10 @@ module Symbol_table = struct
   end
 
   type t = One_table.t list
+
+  let get buf entry =
+    let index = Owee_rel_entry.symbol_index entry in
+    One_table.extract buf ~index
 
   let create bufs =
     List.map (fun buf -> One_table.create buf) bufs
@@ -325,7 +336,13 @@ module Symbol_table = struct
     List.iter (fun tree -> Owee_interval_map.iter tree ~f) t
 end
 
-let find_symbol_table buf sections =
-  match find_section_body buf sections ~section_name:".symtab" with
+let find_symbol_table ~section_name buf sections =
+  match find_section_body buf sections ~section_name with
   | None -> None
   | Some symtab -> Some (Symbol_table.create [symtab])
+
+let find_dynamic_symbol_table buf sections =
+  find_symbol_table buf sections ~section_name:".dynsym"
+
+let find_symbol_table buf sections =
+  find_symbol_table buf sections ~section_name:".symtab"

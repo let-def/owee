@@ -74,6 +74,7 @@ end
 
 (** Fish out the string table from the given ELF buffer and section array. *)
 val find_string_table : Owee_buf.t -> section array -> String_table.t option
+val find_dynamic_string_table : Owee_buf.t -> section array -> String_table.t option
 
 module Symbol_table : sig
   (** One or more ELF symbol tables, conjoined. *)
@@ -117,6 +118,7 @@ module Symbol_table : sig
     val binding_attribute : t -> binding_attribute
     val visibility : t -> visibility
     val section_header_table_index : t -> int
+    val index : t -> int
   end
 
   (** The symbols in the table whose value and size determine that they
@@ -135,8 +137,15 @@ module Symbol_table : sig
 
   (** [iter t ~f] calls f on each symbol found in [t]. *)
   val iter : t -> f:(Symbol.t -> unit) -> unit
+
+  (** [get buf relocation] returns the symbol associated with [relocation] in [buf].
+      We assume that [buf] is the start of the body of the section specified by
+      the [section.sh_link] field of [Owee_rel.t] for the [relocation].
+  *)
+  val get : Owee_buf.t -> Owee_rel_entry.t -> Symbol.t
 end
 
 (** Fish out both the dynamic and static symbol tables (.dynsym and .symtab)
     from the given ELF buffer and section array. *)
 val find_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option
+val find_dynamic_symbol_table : Owee_buf.t -> section array -> Symbol_table.t option

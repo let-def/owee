@@ -1,3 +1,11 @@
+Owee 0.7
+========
+Fri May 12 19:02:16 JST 2023
+
+- Test fixes by @gretay-js
+- Bug fix in interval map by @poechsel
+- Added support for relocations by @poechsel
+
 Owee 0.6
 ========
 Mon Apr 18 10:59:40 JST 2022

@@ -2,12 +2,13 @@
    output should be similar to
    objdump --dwarf=decodedline <mybin>
 *)
-let useage () =
-  (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf [-no-address]"); exit 1)
+let usage () =
+  prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf [-no-address]");
+  exit 1
 
 let path =
   if Array.length Sys.argv <= 1 then
-    useage ()
+    usage ()
   else
     Sys.argv.(1)
 
@@ -16,7 +17,7 @@ let print_address =
     true
   else match Sys.argv.(2) with
     | "-no-address" -> false
-    | _ -> useage ()
+    | _ -> usage ()
 
 let buffer = Owee_buf.map_binary path
 

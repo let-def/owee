@@ -18,8 +18,8 @@ type pointers_to_other_sections = {
     pointers to strings in entirely separate sections of DWARF. You can use
     {! Owee_elf.debug_line_pointers} to construct such a value. *)
 val read_chunk
-  :  cursor
-  -> pointers_to_other_sections:pointers_to_other_sections option
+  : ?pointers_to_other_sections:pointers_to_other_sections
+  -> cursor
   -> (header * cursor) option
 
 (** State of the linenumber automaton.

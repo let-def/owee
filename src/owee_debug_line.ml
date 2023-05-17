@@ -233,7 +233,7 @@ let read_header t ~pointers_to_other_sections =
   in
   (header, chunk)
 
-let read_chunk t ~pointers_to_other_sections =
+let read_chunk ?pointers_to_other_sections t =
   if at_end t
   then None
   else Some (read_header t ~pointers_to_other_sections)

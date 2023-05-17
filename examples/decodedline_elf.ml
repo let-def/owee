@@ -28,7 +28,7 @@ let () =
   | None -> ()
   | Some section ->
     let pointers_to_other_sections =
-      Some (Owee_elf.debug_line_pointers buffer sections)
+      Owee_elf.debug_line_pointers buffer sections
     and body =
       Owee_buf.cursor (Owee_elf.section_body buffer section)
     in

@@ -76,7 +76,7 @@ let extract_debug_info buffer =
     (*Printf.eprintf "Looking for 0x%X\n" t;*)
     let body = Owee_elf.section_body buffer section in
     let pointers_to_other_sections =
-      Some (Owee_elf.debug_line_pointers buffer sections) in
+      Owee_elf.debug_line_pointers buffer sections in
     let count = count_rows body ~pointers_to_other_sections in
     let debug_entries = Array.make count
         {addr_lo = max_int; addr_hi = max_int; payload = None} in

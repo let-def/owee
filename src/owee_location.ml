@@ -1,5 +1,9 @@
 type t
 
+external init : unit -> unit = "ml_owee_init"
+
+let () = init ()
+
 external extract : (_ -> _) -> t =
   "ml_owee_code_pointer" "ml_owee_code_pointer" "noalloc"
 

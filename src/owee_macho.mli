@@ -14,6 +14,8 @@ type cpu_type = [
   | `X86
   | `X86_64
   | `ARM
+  | `ARM64
+  | `ARM64_32
   | `POWERPC
   | `POWERPC64
   | unknown
@@ -263,8 +265,8 @@ type section = {
   (* name of section *)
   sec_sectname   : string;
   (* name of segment that should own this section *)
-    sec_segname    : string;
-  (* virtual memoy address for section *)
+  sec_segname    : string;
+  (* virtual memory address for section *)
   sec_addr       : u64;
   (* size of section *)
   sec_size       : u64;

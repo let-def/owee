@@ -38,6 +38,8 @@ type cpu_type = [
   | `X86
   | `X86_64
   | `ARM
+  | `ARM64
+  | `ARM64_32
   | `POWERPC
   | `POWERPC64
   | unknown
@@ -47,6 +49,8 @@ let cpu_type = function
   | 0x00000007 -> `X86
   | 0x01000007 -> `X86_64
   | 0x0000000c -> `ARM
+  | 0x0100000c -> `ARM64    (* ABI for 64-bit hardware *)
+  | 0x0200000c -> `ARM64_32 (* ABI for 64-bit hardware with 32-bit types; LP32 *)
   | 0x00000012 -> `POWERPC
   | 0x01000012 -> `POWERPC64
   | n          -> `Unknown n

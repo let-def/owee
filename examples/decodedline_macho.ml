@@ -1,10 +1,10 @@
 (* ./decodedline <mybin>
    output should be similar to
-   objdump --dwarf=decodedline <mybin>
+   objdump --dwarf=frames <mybin>
 *)
 let path =
   if Array.length Sys.argv <= 1 then
-    (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.elf"); exit 1)
+    (prerr_endline ("Usage: " ^ Sys.argv.(0) ^ " my_binary.exe"); exit 1)
   else
     Sys.argv.(1)
 

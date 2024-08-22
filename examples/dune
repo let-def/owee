@@ -1,22 +1,24 @@
 (executables
- (names decodedline_elf decodedline_macho functions locate read_buildid read_stapsdt_probes)
+ (names decodedline_elf decodedline_macho functions read_buildid read_stapsdt_probes)
  (libraries owee unix))
 
 (alias
  (name runtest)
- (deps decodedline_elf.exe decodedline_macho.exe 
-       functions.exe locate.exe
+ (deps decodedline_elf.exe
+       decodedline_macho.exe
+       functions.exe
        read_buildid.exe read_stapsdt_probes.exe))
 
 (rule
   (deps test.c)
   (targets test-4.bin test-5.bin)
-  (action 
+  (action
    (progn 
     (run gcc test.c -gdwarf-4 -o test-4.bin)
     (run gcc test.c -gdwarf-5 -o test-5.bin))))
 
 (rule
+ (enabled_if (= %{ocaml-config:system} linux))
  (alias runtest)
  (deps test-4.bin test-5.bin)
  (targets test-dwarf-4.output test-dwarf-5.output)

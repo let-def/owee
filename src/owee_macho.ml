@@ -518,7 +518,7 @@ type section = {
   (* name of section *)
   sec_sectname   : string;
   (* name of segment that should own this section *)
-    sec_segname    : string;
+  sec_segname    : string;
   (* virtual memoy address for section *)
   sec_addr       : u64;
   (* size of section *)

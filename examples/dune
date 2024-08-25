@@ -1,6 +1,7 @@
 (executables
- (names decodedline_elf decodedline_macho functions read_buildid read_stapsdt_probes)
- (libraries owee unix))
+ (names decodedline_elf decodedline_macho functions read_buildid read_stapsdt_probes
+        objdump)
+ (libraries owee unix cmdliner))
 
 (alias
  (name runtest)

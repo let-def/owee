@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    - cron: "0 5 * * *"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          # MacOS ARM64
+          - macos-14
+          # Linux x86_64
+          - ubuntu-22.04
+
+        ocaml-compiler:
+          # Test the oldest OCaml version and the two newest versions.
+          - 4.14
+          - 5.2
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Update Ubuntu
+        if: runner.os == 'linux'
+        run: |
+          sudo apt-get update
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+
+      - name: Install dependencies
+        run: |
+          opam install . --deps-only --with-test
+
+      - name: Build
+        run: |
+          opam exec -- dune build @all
+
+      - name: Opam Lint
+        run: |
+          opam lint owee.opam

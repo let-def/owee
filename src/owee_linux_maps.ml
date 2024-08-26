@@ -25,7 +25,7 @@ let mk_entry
   }
 
 let scan_line ic =
-  Scanf.bscanf ic "%Lx-%Lx %c%c%c%c %Lx %x:%x %Ld%s@\n" mk_entry
+  Scanf.bscanf ic "%Lx-%Lx %c%c%c%c %Lx %x:%x %Lu%s@\n" mk_entry
 
 let rec scan_lines ic =
   match scan_line ic with

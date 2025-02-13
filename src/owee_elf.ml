@@ -86,6 +86,36 @@ let read_header t e_ident =
     e_phentsize; e_phnum; e_shentsize;
     e_shnum; e_shstrndx; e_ident }
 
+(* Program header *)
+type program = {
+  p_type   : u32;
+  p_flags  : u32;
+  p_offset : u64;
+  p_vaddr  : u64;
+  p_paddr  : u64;
+  p_filesz : u64;
+  p_memsz  : u64;
+  p_align  : u64;
+}
+
+let read_program header t n =
+  seek t ((Int64.to_int header.e_phoff) + n * header.e_phentsize);
+  ensure t 48 "Phdr truncated";
+  let p_type   = Read.u32 t in
+  let p_flags  = Read.u32 t in
+  let p_offset = Read.u64 t in
+  let p_vaddr  = Read.u64 t in
+  let p_paddr  = Read.u64 t in
+  let p_filesz = Read.u64 t in
+  let p_memsz  = Read.u64 t in
+  let p_align  = Read.u64 t in
+  { p_type; p_flags; p_offset; p_vaddr;
+    p_paddr; p_filesz; p_memsz; p_align }
+
+let read_programs buf header =
+  let elf = cursor buf in
+  Array.init header.e_phnum (read_program header elf)
+
 (* Section header *)
 type section = {
   sh_name      : u32;

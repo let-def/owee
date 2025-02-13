@@ -27,6 +27,17 @@ type header = {
   e_shstrndx  : u16;
 }
 
+type program = {
+  p_type   : u32;
+  p_flags  : u32;
+  p_offset : u64;
+  p_vaddr  : u64;
+  p_paddr  : u64;
+  p_filesz : u64;
+  p_memsz  : u64;
+  p_align  : u64;
+}
+
 type section = {
   sh_name      : u32;
   sh_type      : u32;
@@ -40,6 +51,9 @@ type section = {
   sh_entsize   : u64;
   sh_name_str  : string;
 }
+
+(** Read the program headers from the given ELF buffer *)
+val read_programs : Owee_buf.t -> header -> program array
 
 (** From a buffer pointing to an ELF image, [read_elf] decodes the header and
     section table. *)

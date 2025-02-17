@@ -35,11 +35,13 @@
      (run grep "test.c"))))))
 
 (rule
+ (enabled_if (= %{ocaml-config:system} linux))
  (alias runtest)
  (deps test-dwarf-4.expected test-dwarf-4.output)
  (action (diff test-dwarf-4.expected test-dwarf-4.output)))
 
 (rule
+ (enabled_if (= %{ocaml-config:system} linux))
  (alias runtest)
  (deps test-dwarf-5.expected test-dwarf-5.output)
  (action (diff test-dwarf-5.expected test-dwarf-5.output)))

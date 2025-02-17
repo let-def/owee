@@ -25,8 +25,14 @@
  (targets test-dwarf-4.output test-dwarf-5.output)
  (action
   (progn
-   (with-stdout-to test-dwarf-4.output (run %{exe:decodedline_elf.exe} test-4.bin -no-address))
-   (with-stdout-to test-dwarf-5.output (run %{exe:decodedline_elf.exe} test-5.bin -no-address)))))
+   (with-stdout-to test-dwarf-4.output
+    (pipe-stdout
+     (run %{exe:decodedline_elf.exe} test-4.bin -no-address)
+     (run grep "test.c")))
+   (with-stdout-to test-dwarf-5.output
+    (pipe-stdout
+     (run %{exe:decodedline_elf.exe} test-5.bin -no-address)
+     (run grep "test.c"))))))
 
 (rule
  (alias runtest)
